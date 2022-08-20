@@ -1,0 +1,8 @@
+name = "api"
+main = "src/index.ts"
+compatibility_date = "2022-08-19"
+workers_dev = false
+usage_model = "bundled"
+route = "sparky.works/api*"
+account_id = "ae6e658c037606bf7536325a439f3456"
+minify = true
