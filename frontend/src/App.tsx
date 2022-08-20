@@ -1,26 +1,68 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { useEffect, useState } from 'react';
+import AppLayout from '@cloudscape-design/components/app-layout';
+import Header from '@cloudscape-design/components/header';
+import Container from '@cloudscape-design/components/container';
+import SpaceBetween from '@cloudscape-design/components/space-between';
 
-function App() {
+type Worker = {
+  id: string;    
+}
+const App = () => {
+  const [workers, setWorkers] = useState<Worker[]>([]);
+
+  useEffect(() => {
+    fetch(`${process.env.REACT_APP_API_ENDPOINT}/workers`, {
+      mode: 'cors',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).then((result) => {
+      console.log(result);
+      setWorkers([]);
+    }).catch((error) => {
+      console.error(error);
+    });
+  }, []);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
+    <AppLayout
+      ariaLabels={{
+        navigation: "Navigation drawer",
+        navigationClose: "Close navigation drawer",
+        navigationToggle: "Open navigation drawer",
+        notifications: "Notifications",
+        tools: "Help panel",
+        toolsClose: "Close help panel",
+        toolsToggle: "Open help panel"
+      }}
+      contentType="form"
+      navigationHide={true}
+      toolsHide={true}
+      contentHeader={<Header variant='h1'>Sparky's Workers!</Header>}
+      content={
+        <Container
+          header={
+            <Header
+              variant="h2"
+              description="List of CloudFlare Workers Owned by @Sparky under this domain!"
+            />
+          }
         >
-          Learn React
-        </a>
-      </header>
-    </div>
+          <SpaceBetween size='s'>
+            {workers.map((worker, key) => {
+              return (
+                <div key={key}>
+                  <h2>{worker.id}</h2>
+                </div>
+              );
+            })}
+          </SpaceBetween>
+        </Container>
+      }
+    />
   );
 }
+
 
 export default App;

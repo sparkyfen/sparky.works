@@ -2,7 +2,19 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-## Available Scripts
+## CloudFlare Pages
+
+This project is designed to work with the [CloudFlare Pages](https://developers.cloudflare.com/pages) but can also be run locally.
+
+
+## CloudFlare Scripts
+In the project directory, you can run:
+
+### `npx wrangler pages dev -- npx react-scripts start`
+Runs the app in the development mode.\
+Operates similarly to `npm start` with the benefit of operating like a CloudFlare Page.
+
+## Default Available Scripts
 
 In the project directory, you can run:
 
@@ -13,6 +25,9 @@ Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 
 The page will reload if you make edits.\
 You will also see any lint errors in the console.
+
+### `npm format`
+Runs [Prettier](https://github.com/prettier/prettier) on the entire `src` directory.
 
 ### `npm test`
 
