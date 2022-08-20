@@ -18,8 +18,13 @@ const App = () => {
         'Content-Type': 'application/json'
       }
     }).then((result) => {
-      console.log(result);
-      setWorkers([]);
+      result.json().then((response) => {
+        if (result.ok) {
+          setWorkers(response);
+        } else {
+          console.error(response.message);
+        }
+      });
     }).catch((error) => {
       console.error(error);
     });

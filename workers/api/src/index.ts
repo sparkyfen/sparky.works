@@ -1,19 +1,25 @@
 import { Router } from 'itty-router';
 
+import Workers from './handlers/workers';
+import Cors from './handlers/cors';
+import { defaultHeaders } from './utils';
+
 const router = Router();
+
+const errorHandler = (error) => {
+  return new Response(error.message || 'Internal server error.', { status: error.status || 500, headers: defaultHeaders});
+};
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const json = JSON.stringify({message: 'Hello world!'});
     router
+      .options('/api/workers', Cors)
+      .get('/api/workers', Workers)
       .get('*', () => new Response(json, {
-        headers: {
-          'Content-Type': 'application/json;charset=UTF-8',
-          'Access-Control-Allow-Origin': 'https://sparky.works',
-          'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-          'Access-Control-Request-Headers': 'Content-Type',
-        },
+        headers: defaultHeaders,
       }));
-    return router.handle(request);
+    return router.handle(request, env, ctx)
+    .catch(errorHandler);
   },
 };
