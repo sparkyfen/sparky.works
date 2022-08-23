@@ -15,7 +15,9 @@ export default {
     const json = JSON.stringify({message: 'Hello world!'});
     router
       .options('/api/workers', Cors)
-      .get('/api/workers', Workers)
+      .options('/api/workers/analytics', Cors)
+      .get('/api/workers', Workers.list)
+      .get('/api/workers/analytics', Workers.analytics)
       .get('*', () => new Response(json, {
         headers: defaultHeaders,
       }));

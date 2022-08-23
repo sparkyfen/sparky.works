@@ -3,15 +3,18 @@ import AppLayout from '@cloudscape-design/components/app-layout';
 import Header from '@cloudscape-design/components/header';
 import Container from '@cloudscape-design/components/container';
 import SpaceBetween from '@cloudscape-design/components/space-between';
+import Spinner from '@cloudscape-design/components/spinner';
 
-type Worker = {
-  id: string;    
-}
+import { Worker as IWorker, WorkerDetail as IWorkerDetail, MergedWorkerDetails } from './types';
+import WorkerDetail from './worker-detail';
+
+
 const App = () => {
-  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [workerDetails, setWorkerDetails] = useState<MergedWorkerDetails[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_ENDPOINT}/workers`, {
+    fetch(`http://localhost:8787/api/workers`, {
       mode: 'cors',
       credentials: 'same-origin',
       headers: {
@@ -20,15 +23,46 @@ const App = () => {
     }).then((result) => {
       result.json().then((response) => {
         if (result.ok) {
-          setWorkers(response);
+          getAnalytics(response);
         } else {
+          setLoading(false);
           console.error(response.message);
         }
       });
     }).catch((error) => {
+      setLoading(false);
       console.error(error);
     });
   }, []);
+
+  const getAnalytics = (workers: IWorker[]) => {
+    fetch(`http://localhost:8787/api/workers/analytics`, {
+      mode: 'cors',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).then((result) => {
+      result.json().then((workerAnalytics) => {
+        if (result.ok) {
+          setLoading(false);
+          const mergedWorkerDetails = workerAnalytics.filter((workerAnalytic : IWorkerDetail) =>
+            workers.findIndex((workerDetail : IWorker) => workerDetail.id === workerAnalytic.id) !== -1
+          ).map((workerAnalytic : IWorkerDetail) => ({
+            ...workers.find((workerDetail: IWorker) => workerDetail.id === workerAnalytic.id && workerDetail),
+            ...workerAnalytic
+          }));
+          setWorkerDetails(mergedWorkerDetails);
+        } else {
+          setLoading(false);
+          console.error(workerAnalytics.message);
+        }
+      });
+    }).catch((error) => {
+      setLoading(false);
+      console.error(error);
+    });
+  };
 
   return (
     <AppLayout
@@ -46,24 +80,18 @@ const App = () => {
       toolsHide={true}
       contentHeader={<Header variant='h1'>Sparky's Workers!</Header>}
       content={
-        <Container
-          header={
-            <Header
-              variant="h2"
-              description="List of CloudFlare Workers Owned by @Sparky under this domain!"
-            />
+        <>
+          {
+            loading ? <Container><Spinner size="large" /></Container>
+            : <SpaceBetween size='s'>
+                {workerDetails.map((workerDetail, key) => {
+                  return (
+                    <WorkerDetail worker={workerDetail} key={key} />
+                  );
+                })}
+              </SpaceBetween>
           }
-        >
-          <SpaceBetween size='s'>
-            {workers.map((worker, key) => {
-              return (
-                <div key={key}>
-                  <h2>{worker.id}</h2>
-                </div>
-              );
-            })}
-          </SpaceBetween>
-        </Container>
+        </>
       }
     />
   );
