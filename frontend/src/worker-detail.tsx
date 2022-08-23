@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, ColumnLayout, Container, Header, Link, ProgressBar, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
+import { Box, ColumnLayout, Container, Header, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
 import { MergedWorkerDetails } from './types';
 
 const ValueWithLabel = ({ label, children }: {label: string, children: React.ReactElement | any}) => (
@@ -8,7 +8,6 @@ const ValueWithLabel = ({ label, children }: {label: string, children: React.Rea
     <div>{children}</div>
   </div>
 );
-
 
 type WorkerDetailProps = {
   worker: MergedWorkerDetails;

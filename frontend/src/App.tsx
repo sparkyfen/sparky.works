@@ -14,7 +14,7 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`http://localhost:8787/api/workers`, {
+    fetch(`${process.env.REACT_APP_API_ENDPOINT}/workers`, {
       mode: 'cors',
       credentials: 'same-origin',
       headers: {
@@ -36,7 +36,7 @@ const App = () => {
   }, []);
 
   const getAnalytics = (workers: IWorker[]) => {
-    fetch(`http://localhost:8787/api/workers/analytics`, {
+    fetch(`${process.env.REACT_APP_API_ENDPOINT}/workers/analytics`, {
       mode: 'cors',
       credentials: 'same-origin',
       headers: {
