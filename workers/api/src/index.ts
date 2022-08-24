@@ -16,6 +16,7 @@ export default {
     router
       .options('/api/workers', Cors)
       .options('/api/workers/analytics', Cors)
+      .options('*', Cors)
       .get('/api/workers', Workers.list)
       .get('/api/workers/analytics', Workers.analytics)
       .get('*', () => new Response(json, {
