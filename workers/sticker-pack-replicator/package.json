@@ -1,0 +1,22 @@
+{
+  "name": "@sparky.works/worker/sticker-pack-replicator",
+  "version": "0.0.1",
+  "dependencies": {
+    "@cfworker/web": "^1.12.4",
+    "cfworker-middware-telegraf": "^2.0.0",
+    "telegraf": "^4.8.6",
+    "typescript": "^4.7.4",
+    "wrangler": "2.0.26"
+  },
+  "private": true,
+  "scripts": {
+    "build": "webpack -c webpack.config.js",
+    "start": "wrangler dev",
+    "deploy": "wrangler publish"
+  },
+  "devDependencies": {
+    "node-polyfill-webpack-plugin": "^2.0.1",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0"
+  }
+}

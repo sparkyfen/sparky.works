@@ -1,0 +1,23 @@
+name = "sticker-pack-replicator"
+main = "dist/worker.js"
+compatibility_date = "2022-08-24"
+
+account_id = "ae6e658c037606bf7536325a439f3456"
+usage_model = "bundled"
+node_compat = true
+
+[vars]
+SPARKY_TELEGRAM_ID = "728854954"
+
+[build]
+command = "npm run build"
+
+[env.dev]
+workers_dev = true
+
+[env.production]
+workers_dev = false
+
+routes = [
+  { pattern = "sticker-replicator.sparky.works", custom_domain = true }
+]
