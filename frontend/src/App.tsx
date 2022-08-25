@@ -78,7 +78,7 @@ const App = () => {
       contentType="form"
       navigationHide={true}
       toolsHide={true}
-      contentHeader={<Header variant='h1'>Sparky's Workers!</Header>}
+      contentHeader={<Header variant='h1' description="24hr stats">Sparky's Workers!</Header>}
       content={
         <>
           {

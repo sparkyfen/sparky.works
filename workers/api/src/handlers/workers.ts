@@ -34,6 +34,9 @@ const Workers = {
     } });
   },
   analytics: async (req: Request, env: Env, ctx: ExecutionContext) => {
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
     const body = JSON.stringify({
       /*
         cpuTimeP25: float32!
@@ -78,8 +81,8 @@ const Workers = {
       }`,
       variables: {
         accountTag: `${env.ACCOUNT_ID}`,
-        datetimeStart: "2022-08-19T00:00:00Z", // TODO Change this to a longer time that we're allowed.
-        datetimeEnd: new Date().toISOString(),
+        datetimeStart: yesterday.toISOString(),
+        datetimeEnd: today.toISOString(),
       }
     });
     const workerAnalyticsResult = await fetch(`https://api.cloudflare.com/client/v4/graphql`, {
