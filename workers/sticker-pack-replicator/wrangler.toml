@@ -4,20 +4,17 @@ compatibility_date = "2022-08-24"
 
 account_id = "ae6e658c037606bf7536325a439f3456"
 usage_model = "bundled"
-node_compat = true
-
-[vars]
-SPARKY_TELEGRAM_ID = "728854954"
+workers_dev = false
+vars = { ENVIRONMENT = "dev", SPARKY_TELEGRAM_ID = "728854954" }
+route = "dev.sticker-replicator.sparky.works/*"
 
 [build]
 command = "npm run build"
 
-[env.dev]
-workers_dev = true
-
 [env.production]
 workers_dev = false
-
+name = "sticker-pack-replicator-production"
+vars = { ENVIRONMENT = "production", SPARKY_TELEGRAM_ID = "728854954" }
 routes = [
-  { pattern = "sticker-replicator.sparky.works", custom_domain = true }
+  "sticker-replicator.sparky.works/*"
 ]

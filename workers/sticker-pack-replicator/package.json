@@ -2,11 +2,17 @@
   "name": "@sparky.works/worker/sticker-pack-replicator",
   "version": "0.0.1",
   "dependencies": {
-    "@cfworker/web": "^1.12.4",
-    "cfworker-middware-telegraf": "^2.0.0",
-    "telegraf": "^4.8.6",
+    "abortcontroller-polyfill": "^1.7.3",
     "typescript": "^4.7.4",
-    "wrangler": "2.0.26"
+    "wrangler": "2.0.26",
+    "worktop": "~0.7.3",
+    "grammy": "^1.6.2",
+    "path-browserify": "~1.0.1",
+    "https-browserify": "~1.0.0",
+    "stream-browserify": "~3.0.0",
+    "stream-http": "~3.2.0",
+    "buffer": "~6.0.3",
+    "url": "~0.11.0"
   },
   "private": true,
   "scripts": {
@@ -15,8 +21,10 @@
     "deploy": "wrangler publish"
   },
   "devDependencies": {
-    "node-polyfill-webpack-plugin": "^2.0.1",
-    "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0"
+    "node-polyfill-webpack-plugin": "^1.1.4",
+    "tslib": "~2.3.1",
+    "ts-loader": "~9.2.6",
+    "webpack": "^5.66.0",
+    "webpack-cli": "^4.9.1"
   }
 }
