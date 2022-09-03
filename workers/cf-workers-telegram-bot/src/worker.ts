@@ -23,7 +23,7 @@ export default {
   fetch: async (request: Request, env: Environment) =>
     new Handler([
       {
-        bot_name: "@stickerreplicatorbot",
+        bot_name: "stickerreplicatorbot",
         token: env.SECRET_TELEGRAM_API_TOKEN,
         commands: {
           "/chatinfo": commands.chatInfo,

@@ -13,7 +13,7 @@ export const prettyJSON = (obj: unknown): string =>
 
 // Generate JSON response
 export const JSONResponse = (obj: unknown, status = 200): Response => {
-  new Response(prettyJSON(obj), {
+  return new Response(prettyJSON(obj), {
     status: status,
     headers: {
       "content-type": "application/json",

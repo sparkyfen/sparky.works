@@ -10,6 +10,7 @@ import {
 import Handler from "./handler";
 
 export default class Bot {
+  bot_name: string;
   token: string;
   commands: Commands;
   api: URL;
@@ -18,6 +19,7 @@ export default class Bot {
   handler: Handler;
 
   constructor(config: Config) {
+    this.bot_name = config.bot_name;
     this.token = config.token || null;
     this.commands = config.commands;
     this.api = new URL(`https://api.telegram.org/bot${config.token}`);
@@ -164,8 +166,8 @@ export default class Bot {
     disable_notification = false,
     reply_to_message_id = 0,
     reply_markup = {}
-  ): Promise<Response> =>
-    fetch(
+  ): Promise<Response> => {
+    const response = await fetch(
       log(
         addSearchParams(new URL(`${this.api.href}/sendMessage`), {
           chat_id: chat_id.toString(),
@@ -178,6 +180,8 @@ export default class Bot {
         }).href
       )
     );
+    return await responseToJSON(response);
+  }
 
   // trigger forwardMessage command of BotAPI
   forwardMessage = async (
@@ -226,8 +230,8 @@ export default class Bot {
     disable_notification = false,
     allow_sending_without_reply = true,
     reply_to_message_id = 0
-  ) =>
-    fetch(
+  ): Promise<string> => {
+    const response = await fetch(
       log(
         addSearchParams(new URL(`${this.api.href}/sendSticker`), {
           chat_id: chat_id.toString(),
@@ -235,6 +239,28 @@ export default class Bot {
           disable_notification: disable_notification.toString(),
           allow_sending_without_reply: allow_sending_without_reply.toString(),
           reply_to_message_id: reply_to_message_id.toString(),
+        }).href
+      ),
+      {
+        headers: {
+          'content-type': 'application/json;charset=UTF-8',
+        },
+      }
+    );
+    return await responseToJSON(response);
+  };
+
+  sendDocument = async (
+    chat_id: number,
+    document_id: string,
+    disable_notification = false
+  ) =>
+    fetch(
+      log(
+        addSearchParams(new URL(`${this.api.href}/sendDocument`), {
+          chat_id: chat_id.toString(),
+          document: document_id,
+          disable_notification: disable_notification.toString(),
         }).href
       )
     );

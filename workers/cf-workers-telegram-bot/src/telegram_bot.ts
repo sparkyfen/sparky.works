@@ -95,19 +95,52 @@ export default class TelegramBot extends Bot {
       const stickerUrl = args[1];
       const stickerName = getStickerPackName(stickerUrl);
       console.log('Got sticker name', stickerName);
-      try {
-        const content = await this.getStickerSet(stickerName);
+      // TODO Handle animated packs or video packs.
+      const stickerSet = await this.getStickerSet(stickerName);
+      if (stickerSet.result.stickers.length > 25) {
         this.sendMessage(
           update.message.chat.id,
-          'Below are the commands you need to forward to the @Stickers bot.',
-        );
-        // TODO This runs in parallel so we need a way to maintain the order of the sticker pack.
-        return Promise.allSettled(content.result.stickers.map((sticker) => {
-          return this.sendSticker(update.message.chat.id, sticker.file_id);
-        }));
-      } catch(err) {
-        console.log(err);
+          'Unable to currently process packs with counts greater than 25, please try another pack.',
+        )
+        return;
       }
+      if (stickerSet.result.is_animated || stickerSet.result.is_video) {
+        this.sendMessage(
+          update.message.chat.id,
+          'Unable to currently process animated or video packs, please try another pack.',
+        )
+        return;
+      }
+      // TODO Test this so its under 64 chars.
+      const newStickerSuffix = `_by_${this.bot_name}`;
+      const newStickerName = `${stickerName.slice(0, 64 - newStickerSuffix.length)}${newStickerSuffix}`; //SparkyFen_by_stickerreplicatorbot
+      // sticketSet.result.title
+      // TODO This runs in parallel so we need a way to maintain the order of the sticker pack.
+      await this.sendMessage(
+        update.message.chat.id,
+        '/newpack',
+        '',
+        false,
+        true, //disable_notification
+      );
+      await this.sendMessage(
+        update.message.chat.id,
+        newStickerName,
+        '',
+        false,
+        true, //disable_notification
+      );
+      for (const sticker of stickerSet.result.stickers) {
+        await this.sendSticker(update.message.chat.id, sticker.file_id, true);
+        await this.sendMessage(update.message.chat.id, sticker.emoji, '', false, true);
+        await this.sendMessage(update.message.chat.id, '/addsticker', '', false, true);
+        await this.sendMessage(update.message.chat.id, `<${newStickerName}>`, '', false, true);
+      }
+      await this.sendMessage(
+        update.message.chat.id,
+        '*Work in Progress*: Above are the commands you need to forward to the @Stickers bot\\. Check @About\\_StickerReplicatorBot for more instructions\\.',
+        'MarkdownV2'
+      );
     }
   }
 
