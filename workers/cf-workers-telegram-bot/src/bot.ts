@@ -1,5 +1,5 @@
 import Webhook from "./webhook";
-import { addSearchParams, log, responseToJSON } from "./libs";
+import { addSearchParams, log, responseToJSON, JSONResponse } from "./libs";
 import {
   Commands,
   Config,
@@ -110,9 +110,10 @@ export default class Bot {
         `Sticker pack name missing for this sticker, try another one.`
       );
     } else {
+      // TODO Move this into something the end user can add to the handler constructor.
       this.sendMessage(
         update.message.chat.id,
-        `Please send the following command to transfer the pack\\.\n*Note*\\: Starting the transfer clears the chat\\.\n\`\\/transfer https\\:\\/\\/t\\.me\\/addstickers\\/${sticker.set_name}\``,
+        `Please send the following command to transfer the pack\\.\n\`\\/transfer https\\:\\/\\/t\\.me\\/addstickers\\/${sticker.set_name}\``,
         'MarkdownV2'
       );
     }
@@ -213,6 +214,26 @@ export default class Bot {
           caption,
           parse_mode,
           disable_notification: disable_notification.toString(),
+          reply_to_message_id: reply_to_message_id.toString(),
+        }).href
+      )
+    );
+
+  // trigger sendPhoto command of BotAPI
+  sendSticker = async (
+    chat_id: number,
+    sticker: string,
+    disable_notification = false,
+    allow_sending_without_reply = true,
+    reply_to_message_id = 0
+  ) =>
+    fetch(
+      log(
+        addSearchParams(new URL(`${this.api.href}/sendSticker`), {
+          chat_id: chat_id.toString(),
+          sticker,
+          disable_notification: disable_notification.toString(),
+          allow_sending_without_reply: allow_sending_without_reply.toString(),
           reply_to_message_id: reply_to_message_id.toString(),
         }).href
       )
@@ -363,7 +384,7 @@ export default class Bot {
     user_id: number,
     offset = 0,
     limit = 0
-  ): Promise<Response> =>
+  ) =>
     fetch(
       log(
         addSearchParams(new URL(`${this.api.href}/getUserProfilePhotos`), {
@@ -373,4 +394,23 @@ export default class Bot {
         }).href
       )
     );
+
+  // bot api command to get sticker set.
+  getStickerSet = async (
+    sticker_name: string,
+  ): Promise<string> => {
+    const response = await fetch(
+      log(
+        addSearchParams(new URL(`${this.api.href}/getStickerSet`), {
+          name: sticker_name.toString(),
+        }).href
+      ),
+      {
+        headers: {
+          'content-type': 'application/json;charset=UTF-8',
+        },
+      }
+    );
+    return await responseToJSON(response);
+  }
 }

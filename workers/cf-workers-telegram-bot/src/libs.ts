@@ -12,13 +12,14 @@ export const prettyJSON = (obj: unknown): string =>
   JSON.stringify(obj, null, 2);
 
 // Generate JSON response
-export const JSONResponse = (obj: unknown, status = 200): Response =>
+export const JSONResponse = (obj: unknown, status = 200): Response => {
   new Response(prettyJSON(obj), {
     status: status,
     headers: {
       "content-type": "application/json",
     },
   });
+};
 
 export const log = <T>(obj: T): T => console.log(obj) === undefined && obj;
 

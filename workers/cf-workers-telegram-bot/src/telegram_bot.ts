@@ -56,7 +56,7 @@ export default class TelegramBot extends Bot {
   // @stickerreplicatorbot
   // bot command: /start
   stickerReplicatorBotStart = async (update: TelegramUpdate): Promise<Response> => {
-    const startMessage = `Hello there\\!\n\nThis bot has the ability to copy stickers from one pack to another\\.\nNote: It won't retain stats on the previous one or update/delete the old pack\\.\nTo get started, type /transfer with a link or follow it up with a sticker\\.`;
+    const startMessage = `Hello there\\!\n\nThis bot has the ability to copy stickers from one pack to another\\.\n*Note*: It won't retain stats on the previous one or update/delete the old pack\\.\nTo get started, type /transfer with a link or follow it up with a sticker\\.`;
     this.sendMessage(
       update.message.chat.id,
       startMessage,
@@ -65,7 +65,7 @@ export default class TelegramBot extends Bot {
   }
 
   // bot command: /transfer
-  stickerReplicatorBotTransfer = async (update: TelegramUpdate, args: string[]): Promise<Response> => {
+  stickerReplicatorBotTransfer = async (update: TelegramUpdate, args: string[]): Promise<Response[]> => {
     const validInput = (input: string): boolean => {
       const urlMatches = input.match(URL_REGEX);
       if (!urlMatches || urlMatches.length < 4) {
@@ -73,10 +73,15 @@ export default class TelegramBot extends Bot {
       }
       return STICKER_SUFFIX_REGEX.test(urlMatches[4]);
     };
+    const getStickerPackName = (input: string): string => {
+      const urlMatches = input.match(URL_REGEX);
+      const nameMatches = urlMatches[4].match(STICKER_SUFFIX_REGEX);
+      return nameMatches[1];
+    };
     if (args.length <= 1) {
       this.sendMessage(
         update.message.chat.id,
-        'Please send the link of the sticker pack `\\/transfer \\<URL\\>` or a sticker from the pack to find necessary command\\.\n*Note*\\: Starting the transfer clears the chat\\.',
+        'Please send the link of the sticker pack `\\/transfer \\<URL\\>` or a sticker from the pack to find necessary command\\.',
         'MarkdownV2'
       );
     } else {
@@ -88,13 +93,21 @@ export default class TelegramBot extends Bot {
         return;
       }
       const stickerUrl = args[1];
-      // TODO
-      // Clear the chat.
-      // Drop the commands below.
-      this.sendMessage(
-        update.message.chat.id,
-        `We got some input: ${stickerUrl}`,
-      );
+      const stickerName = getStickerPackName(stickerUrl);
+      console.log('Got sticker name', stickerName);
+      try {
+        const content = await this.getStickerSet(stickerName);
+        this.sendMessage(
+          update.message.chat.id,
+          'Below are the commands you need to forward to the @Stickers bot.',
+        );
+        // TODO This runs in parallel so we need a way to maintain the order of the sticker pack.
+        return Promise.allSettled(content.result.stickers.map((sticker) => {
+          return this.sendSticker(update.message.chat.id, sticker.file_id);
+        }));
+      } catch(err) {
+        console.log(err);
+      }
     }
   }
 

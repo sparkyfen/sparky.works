@@ -19,7 +19,7 @@ export default class Webhook {
       this.execute(
         addSearchParams(new URL(`${this.api.href}/setWebhook`), {
           url: `${this.url.href}/${access_key}`,
-          max_connections: "100",
+          max_connections: "1000",
           allowed_updates: JSON.stringify(["message", "inline_query"]),
           drop_pending_updates: drop_pending_updates.toString(),
         })
