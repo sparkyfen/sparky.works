@@ -28,6 +28,9 @@ const WorkerDetail = (props: WorkerDetailProps) => {
       statusType = 'success';
       break;
     // TODO There might be more here but we can't see cause CloudFlare GraphQL API doesn't ENUM this field.
+    case 'scriptThrewException':
+      statusType = 'error';
+      break;
     default:
       break;
   }
