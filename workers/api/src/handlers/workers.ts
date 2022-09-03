@@ -73,7 +73,6 @@ const Workers = {
                 scriptName
                 status
                 environmentName
-                namespaceName
               }
             }
           }
@@ -119,7 +118,6 @@ const Workers = {
       total_requests: workerData.sum.requests,
       total_errors: workerData.sum.errors,
       environment: workerData.dimensions.environmentName,
-      namespace: workerData.dimensions.namespaceName,
     }));
     return new Response(JSON.stringify(workerAnalytics), { headers: {
       ...defaultHeaders,
