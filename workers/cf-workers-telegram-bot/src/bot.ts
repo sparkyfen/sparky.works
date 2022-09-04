@@ -5,6 +5,7 @@ import {
   Config,
   TelegramInlineQueryResult,
   TelegramSticker,
+  TelegramStickerSet,
   TelegramUpdate,
 } from "./types";
 import Handler from "./handler";
@@ -115,7 +116,7 @@ export default class Bot {
       // TODO Move this into something the end user can add to the handler constructor.
       this.sendMessage(
         update.message.chat.id,
-        `Please send the following command to transfer the pack\\.\n\`\\/transfer https\\:\\/\\/t\\.me\\/addstickers\\/${sticker.set_name}\``,
+        `Please send the following command to transfer the pack\\, click it to copy\\.\n\`\\/transfer https\\:\\/\\/t\\.me\\/addstickers\\/${sticker.set_name}\``,
         'MarkdownV2'
       );
     }
@@ -430,6 +431,41 @@ export default class Bot {
         addSearchParams(new URL(`${this.api.href}/getStickerSet`), {
           name: sticker_name.toString(),
         }).href
+      ),
+      {
+        headers: {
+          'content-type': 'application/json;charset=UTF-8',
+        },
+      }
+    );
+    return await responseToJSON(response);
+  }
+
+  createNewStickerSet = async (
+    stickerSet: TelegramStickerSet,
+  ): Promise<Response> => {
+    const response = await fetch(
+      log(
+        addSearchParams(new URL(`${this.api.href}/createNewStickerSet`), {
+          ...stickerSet,
+          sticker_type: 'regular',
+        }).href
+      ),
+      {
+        headers: {
+          'content-type': 'application/json;charset=UTF-8',
+        },
+      }
+    );
+    return await responseToJSON(response);
+  }
+
+  addStickerToSet = async (
+    stickerSet: TelegramStickerSet,
+  ): Promise<Response> => {
+    const response = await fetch(
+      log(
+        addSearchParams(new URL(`${this.api.href}/addStickerToSet`), stickerSet).href
       ),
       {
         headers: {

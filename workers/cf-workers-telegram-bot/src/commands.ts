@@ -8,6 +8,8 @@ export default {
     bot.ping(update),
   code: async (bot: TelegramBot, update: TelegramUpdate, args: string[]) =>
     bot.code(update),
+  quit: async (bot: TelegramBot, update: TelegramUpdate) =>
+    bot.quit(update),
   stickerReplicator: {
     start: async (bot: TelegramBot, update: TelegramUpdate) =>
       bot.stickerReplicatorBotStart(update),

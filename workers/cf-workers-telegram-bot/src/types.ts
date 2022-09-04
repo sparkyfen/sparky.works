@@ -128,6 +128,16 @@ export type TelegramSticker = {
   file_size?: number;
 };
 
+export type TelegramStickerSet = {
+  user_id: number;
+  name: string;
+  title?: string;
+  png_sticker: string;
+  sticker_type?: string;
+  emojis?: string;
+  mask_position?: TelegramMaskPosition;
+};
+
 export type TelegramMessage = {
   message_id: number;
   from: TelegramFrom;
