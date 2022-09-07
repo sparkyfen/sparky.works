@@ -19,8 +19,8 @@ export default class Webhook {
       this.execute(
         addSearchParams(new URL(`${this.api.href}/setWebhook`), {
           url: `${this.url.href}/${access_key}`,
-          max_connections: "1000",
-          allowed_updates: JSON.stringify(["message", "inline_query"]),
+          max_connections: "100", // 1-100, default is 40.
+          allowed_updates: JSON.stringify(["message", "inline_query", "channel_post"]),
           drop_pending_updates: drop_pending_updates.toString(),
         })
       )

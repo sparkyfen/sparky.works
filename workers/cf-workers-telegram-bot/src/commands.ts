@@ -10,13 +10,17 @@ export default {
     bot.code(update),
   quit: async (bot: TelegramBot, update: TelegramUpdate) =>
     bot.quit(update),
+  cancel: async (bot: TelegramBot, update: TelegramUpdate) =>
+    bot.cancel(update),
   stickerReplicator: {
     start: async (bot: TelegramBot, update: TelegramUpdate) =>
       bot.stickerReplicatorBotStart(update),
     transfer: async (bot: TelegramBot, update: TelegramUpdate, args: string[]) =>
       bot.stickerReplicatorBotTransfer(update, args),
-    cancel: async (bot: TelegramBot, update: TelegramUpdate) =>
-      bot.stickerReplicatorBotCancel(update),
+  },
+  spotifyQuerer: {
+    start: async (bot: TelegramBot, update: TelegramUpdate) =>
+      bot.spotifyQuererBotStart(update),
   },
   commandList: async (
     bot: TelegramBot,

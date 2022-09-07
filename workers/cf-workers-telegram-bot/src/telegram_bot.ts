@@ -10,7 +10,6 @@ import {
 } from "./libs";
 import {
   TelegramInlineQueryResultArticle,
-  TelegramInlineQueryResultPhoto,
   TelegramUpdate,
   TelegramStickerSet,
   Config,
@@ -60,6 +59,13 @@ export default class TelegramBot extends Bot {
       "Just delete the chat. Nothing else to do here :)"
     );
 
+  cancel = async (update: TelegramUpdate): Promise<Response> =>
+    // TODO Implement if needed.
+    this.sendMessage(
+      update.message.chat.id,
+      'Doesn\'t really do anything, zzz...',
+    );
+
   // @stickerreplicatorbot
   // bot command: /start
   stickerReplicatorBotStart = async (update: TelegramUpdate): Promise<Response> => {
@@ -69,6 +75,23 @@ export default class TelegramBot extends Bot {
       startMessage,
       "MarkdownV2"
     );
+  }
+
+  stickerReplicatorBotSticker = async (update: TelegramUpdate): Promise<Response> => {
+    const sticker = update.message.sticker;
+    if (!sticker.set_name) {
+      this.sendMessage(
+        update.message.chat.id,
+        `Sticker pack name missing for this sticker, try another one.`
+      );
+    } else {
+      // TODO Move this into something the end user can add to the handler constructor.
+      this.sendMessage(
+        update.message.chat.id,
+        `Please send the following command to transfer the pack\\, click it to copy\\.\n\`\\/transfer https\\:\\/\\/t\\.me\\/addstickers\\/${sticker.set_name}\``,
+        'MarkdownV2'
+      );
+    }
   }
 
   // bot command: /transfer
@@ -101,7 +124,7 @@ export default class TelegramBot extends Bot {
       }
       const stickerUrl = args[1];
       const stickerName = getStickerPackName(stickerUrl);
-      console.log('Got sticker name', stickerName);
+      log('Got sticker name', stickerName);
       // TODO Handle animated packs or video packs.
       const stickerSet = await this.getStickerSet(stickerName);
       if (stickerSet.result.stickers.length > 25) {
@@ -118,7 +141,7 @@ export default class TelegramBot extends Bot {
         )
         return;
       }
-      console.log('Processing sticker pack', stickerName);
+      log('Processing sticker pack', stickerName);
       const newStickerSuffix = `_by_${this.bot_name}`;
       const newStickerName = `${stickerName.slice(0, 64 - newStickerSuffix.length)}${newStickerSuffix}`; //SparkyFen_by_stickerreplicatorbot
       await this.sendMessage(
@@ -157,40 +180,7 @@ export default class TelegramBot extends Bot {
         update.message.chat.id,
         `Congrats! Your sticker pack is at https://t.me/addstickers/${newStickerName}. Check @About_StickerReplicatorBot for more details.`,
       );
-      // await this.sendMessage(
-      //   update.message.chat.id,
-      //   '/newpack',
-      //   '',
-      //   false,
-      //   true, //disable_notification
-      // );
-      // await this.sendMessage(
-      //   update.message.chat.id,
-      //   newStickerName,
-      //   '',
-      //   false,
-      //   true, //disable_notification
-      // );
-      // for (const sticker of stickerSet.result.stickers) {
-      //   await this.sendSticker(update.message.chat.id, sticker.file_id, true);
-      //   await this.sendMessage(update.message.chat.id, sticker.emoji, '', false, true);
-      //   await this.sendMessage(update.message.chat.id, '/addsticker', '', false, true);
-      //   await this.sendMessage(update.message.chat.id, `<${newStickerName}>`, '', false, true);
-      // }
-      // await this.sendMessage(
-      //   update.message.chat.id,
-      //   '*Work in Progress*: Above are the commands you need to forward to the @Stickers bot\\. Check @About\\_StickerReplicatorBot for more instructions\\.',
-      //   'MarkdownV2'
-      // );
     }
-  }
-
-  stickerReplicatorBotCancel  = async (update: TelegramUpdate): Promise<Response> => {
-    // TODO Implement if needed.
-    this.sendMessage(
-      update.message.chat.id,
-      'Doesn\'t really do anything, zzz...',
-    );
   }
 
   // bot command: /chatInfo

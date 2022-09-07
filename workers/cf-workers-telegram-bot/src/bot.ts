@@ -27,12 +27,19 @@ export default class Bot {
     this.webhook = new Webhook(this.api, config.token, config.url);
     this.kv = config.kv || null;
     this.handler = config.handler;
+    this.stickerHandler = config.sticker;
+    this.channelPostHandler = config.channelPost;
   }
 
   inlineQueryUpdate = async (update: TelegramUpdate): Promise<Response> =>
     this.executeInlineCommand(update).then(
       (response) => responseToJSON(response) && response
     ) || this.updates.default(update, 'inlineQueryUpdate');
+
+  channelPostUpdate = async (update: TelegramUpdate): Promise<Response> =>
+    ((update.channel_post.chat &&
+      await this.channelPostHandler(this, update)) ??
+      this.updates.doNothing)
 
   messageUpdate = async (update: TelegramUpdate): Promise<Response> => {
     return ((update.message.sticker && 
@@ -45,7 +52,7 @@ export default class Bot {
   }
 
   defaultMessage = async(update: TelegramUpdate, incomer: string): Promise<Response> => {
-    console.log('Default message', incomer);
+    log('Default message', incomer);
     return this.sendMessage(
       update.message.chat.id,
       `Unknown request, please check /commands.`,
@@ -55,6 +62,7 @@ export default class Bot {
 
   updates = {
     inline_query: this.inlineQueryUpdate,
+    channel_post: this.channelPostUpdate,
     message: this.messageUpdate,
     default: this.defaultMessage,
     doNothing: new Response()
@@ -67,6 +75,8 @@ export default class Bot {
       (await this.updates.message(update))) ||
     (update.inline_query !== undefined &&
       (await this.updates.inline_query(update))) ||
+    (update.channel_post !== undefined &&
+      (await this.updates.channel_post(update))) ||
     this.updates.doNothing;
 
   // greet new users who join
@@ -105,23 +115,6 @@ export default class Bot {
     this.updates.default(update, '_executeCommand');
   }
 
-  _handleSticker = async (update: TelegramUpdate, sticker: TelegramSticker): Promise<Response> => {
-    log({ sticker });
-    if (!sticker.set_name) {
-      this.sendMessage(
-        update.message.chat.id,
-        `Sticker pack name missing for this sticker, try another one.`
-      );
-    } else {
-      // TODO Move this into something the end user can add to the handler constructor.
-      this.sendMessage(
-        update.message.chat.id,
-        `Please send the following command to transfer the pack\\, click it to copy\\.\n\`\\/transfer https\\:\\/\\/t\\.me\\/addstickers\\/${sticker.set_name}\``,
-        'MarkdownV2'
-      );
-    }
-  }
-
   // execute the inline custom bot commands from bot configurations
   executeInlineCommand = async (update: TelegramUpdate): Promise<Response> =>
     ((await this._executeCommand(update, update.inline_query.query)) &&
@@ -138,8 +131,11 @@ export default class Bot {
   }
     
 
-  handleSticker = async (update: TelegramUpdate): Promise<Response> =>
-    this._handleSticker(update, update.message.sticker) || this.updates.default(update, 'handleSticker');
+  handleSticker = async (update: TelegramUpdate): Promise<Response> => {
+    const sticker = update.message.sticker;
+    log({ sticker });
+    return this.stickerHandler(this, update);
+  }
 
 
   // trigger answerInlineQuery command of BotAPI

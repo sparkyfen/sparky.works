@@ -12,6 +12,7 @@
 
 import commands from "./commands";
 import Handler from "./handler";
+import updates from './updates';
 import { responseToJSON } from "./libs";
 
 interface Environment {
@@ -34,10 +35,12 @@ export default {
           "/help": commands.stickerReplicator.start,
           "/start": commands.stickerReplicator.start,
           "/transfer": commands.stickerReplicator.transfer,
-          "/cancel": commands.stickerReplicator.cancel,
-          "/stop": commands.stickerReplicator.cancel,
+          "/cancel": commands.cancel,
+          "/stop": commands.cancel,
         },
+        sticker: updates.stickerReplicator.sticker,
+        channelPost: updates.stickerReplicator.channelPost,
         kv: env.KV_BOT_STORAGE,
-      },
+      }
     ]).handle(request),
 };
