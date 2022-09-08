@@ -25,6 +25,14 @@ export type Workflow = {
   modified_on: string;
   version: number;
   organization?: string;
-  total_requests?: number;
-  total_errors?: number;
 };
+
+export type WorkflowDetail = {
+  id: string;
+  status: string;
+  last_run_on: string;
+  total_requests: number;
+  total_errors: number;
+}
+
+export interface MergedWorkflowDetails extends Merge<Workflow, WorkflowDetail> {}

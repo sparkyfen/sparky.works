@@ -5,13 +5,19 @@ import Container from '@cloudscape-design/components/container';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
 
-import { Worker as IWorker, WorkerDetail as IWorkerDetail, MergedWorkerDetails, Workflow as IWorkflow } from './types';
+import {
+  Worker as IWorker,
+  WorkerDetail as IWorkerDetail,
+  MergedWorkerDetails,
+  Workflow as IWorkflow,
+  MergedWorkflowDetails,
+} from './types';
 import WorkerDetail from './worker-detail';
 import Workflow from './workflow';
 
 const App = () => {
   const [workerDetails, setWorkerDetails] = useState<MergedWorkerDetails[]>([]);
-  const [workflows, setWorkflows] = useState<IWorkflow[]>([]);
+  const [workflows, setWorkflows] = useState<MergedWorkflowDetails[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,7 +30,7 @@ const App = () => {
     }).then((result) => {
       result.json().then((response) => {
         if (result.ok) {
-          getAnalytics(response);
+          getWorkerAnalytics(response);
         } else {
           setLoading(false);
           console.error(response.message);
@@ -43,7 +49,7 @@ const App = () => {
     }).then((result) => {
       result.json().then((response) => {
         if (result.ok) {
-          setWorkflows(response);
+          getWorkflowAnalytics(response);
         } else {
           setLoading(false);
           console.error(response.message);
@@ -52,7 +58,30 @@ const App = () => {
     })
   }, []);
 
-  const getAnalytics = (workers: IWorker[]) => {
+  const getWorkflowAnalytics = async (workflows: IWorkflow[]) => {
+    const workflowDetails = []
+    for (const workflow of workflows) {
+      const result = await fetch(`${process.env.REACT_APP_API_ENDPOINT}/pipedream/workflows/analytics/${workflow.id}`, {
+        mode: 'cors',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      const workflowAnalytics = await result.json();
+      if (result.ok) {
+        workflowDetails.push({
+          ...workflow,
+          ...workflowAnalytics
+        });
+      } else {
+        console.error(workflowAnalytics.message);
+      }
+    }
+    setWorkflows(workflowDetails);
+  };
+
+  const getWorkerAnalytics = (workers: IWorker[]) => {
     fetch(`${process.env.REACT_APP_API_ENDPOINT}/workers/analytics`, {
       mode: 'cors',
       credentials: 'same-origin',

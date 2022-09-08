@@ -4,8 +4,6 @@ compatibility_date = "2022-08-19"
 usage_model = "bundled"
 account_id = "ae6e658c037606bf7536325a439f3456"
 minify = true
-
-[env.dev]
 workers_dev = true
 vars = {ACCOUNT_ID = "ae6e658c037606bf7536325a439f3456"}
 

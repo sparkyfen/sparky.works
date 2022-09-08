@@ -18,10 +18,12 @@ export default {
       .options('/api/workers', Cors)
       .options('/api/workers/analytics', Cors)
       .options('/api/pipedream/workflows', Cors)
+      .options('/api/pipedream/workflows/analytics/:id', Cors)
       .options('*', Cors)
       .get('/api/workers', Workers.list)
       .get('/api/workers/analytics', Workers.analytics)
       .get('/api/pipedream/workflows', Pipedream.workflows)
+      .get('/api/pipedream/workflows/analytics/:id', Pipedream.analytics)
       .get('*', () => new Response(json, {
         headers: defaultHeaders,
       }));
