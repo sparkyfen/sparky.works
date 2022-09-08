@@ -5,12 +5,13 @@ import Container from '@cloudscape-design/components/container';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
 
-import { Worker as IWorker, WorkerDetail as IWorkerDetail, MergedWorkerDetails } from './types';
+import { Worker as IWorker, WorkerDetail as IWorkerDetail, MergedWorkerDetails, Workflow as IWorkflow } from './types';
 import WorkerDetail from './worker-detail';
-
+import Workflow from './workflow';
 
 const App = () => {
   const [workerDetails, setWorkerDetails] = useState<MergedWorkerDetails[]>([]);
+  const [workflows, setWorkflows] = useState<IWorkflow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,6 +34,22 @@ const App = () => {
       setLoading(false);
       console.error(error);
     });
+    fetch(`${process.env.REACT_APP_API_ENDPOINT}/pipedream/workflows`, {
+      mode: 'cors',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }).then((result) => {
+      result.json().then((response) => {
+        if (result.ok) {
+          setWorkflows(response);
+        } else {
+          setLoading(false);
+          console.error(response.message);
+        }
+      });
+    })
   }, []);
 
   const getAnalytics = (workers: IWorker[]) => {
@@ -87,6 +104,11 @@ const App = () => {
                 {workerDetails.map((workerDetail, key) => {
                   return (
                     <WorkerDetail worker={workerDetail} key={key} />
+                  );
+                })}
+                {workflows.map((workflow, key) => {
+                  return (
+                    <Workflow workflow={workflow} key={key} />
                   );
                 })}
               </SpaceBetween>

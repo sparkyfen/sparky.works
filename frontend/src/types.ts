@@ -17,3 +17,14 @@ export type WorkerDetail = {
   namespace?: string;
 }
 export interface MergedWorkerDetails extends Merge<Worker, WorkerDetail> {}
+
+export type Workflow = {
+  id: string;
+  name: string;
+  created_on: string;
+  modified_on: string;
+  version: number;
+  organization?: string;
+  total_requests?: number;
+  total_errors?: number;
+};

@@ -2,6 +2,7 @@ import { Router } from 'itty-router';
 
 import Workers from './handlers/workers';
 import Cors from './handlers/cors';
+import Pipedream from './handlers/pipedream';
 import { defaultHeaders } from './utils';
 
 const router = Router();
@@ -16,9 +17,11 @@ export default {
     router
       .options('/api/workers', Cors)
       .options('/api/workers/analytics', Cors)
+      .options('/api/pipedream/workflows', Cors)
       .options('*', Cors)
       .get('/api/workers', Workers.list)
       .get('/api/workers/analytics', Workers.analytics)
+      .get('/api/pipedream/workflows', Pipedream.workflows)
       .get('*', () => new Response(json, {
         headers: defaultHeaders,
       }));

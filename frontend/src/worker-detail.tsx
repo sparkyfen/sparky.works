@@ -6,6 +6,7 @@ import Header from '@cloudscape-design/components/header';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import StatusIndicator, { StatusIndicatorProps } from '@cloudscape-design/components/status-indicator';
 import moment from 'moment';
+import cfLogo from './cf_logo.png';
 
 import { MergedWorkerDetails } from './types';
 
@@ -35,7 +36,12 @@ const WorkerDetail = (props: WorkerDetailProps) => {
       break;
   }
   return (
-    <Container header={<Header variant="h2">{worker.id}</Header>}>
+    <Container header={
+        <Header variant="h2">
+          <img src={cfLogo} alt="cloudflare logo" width="30" height="15" />
+          {` ${worker.id}`}
+        </Header>
+      }>
       <ColumnLayout columns={4} variant="text-grid">
         <SpaceBetween size="l">
           <ValueWithLabel label="Status">
