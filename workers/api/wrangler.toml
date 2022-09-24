@@ -1,7 +1,7 @@
 name = "api-dev"
 main = "src/index.ts"
 compatibility_date = "2022-08-19"
-usage_model = "bundled"
+usage_model = "unbound"
 account_id = "ae6e658c037606bf7536325a439f3456"
 minify = true
 workers_dev = true
