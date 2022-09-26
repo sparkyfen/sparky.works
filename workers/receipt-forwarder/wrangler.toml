@@ -1,0 +1,14 @@
+name = "receipt-forwarder"
+main = "src/index.ts"
+workers_dev = false
+usage_model = "unbound"
+minify = true
+compatibility_date = "2022-09-25"
+route = "receipts.sparky.works/*"
+
+[vars]
+# TWILIO_SECRET
+# TWILIO_ACCOUNT_SID
+# SPARKY_PHONE_NUMBER
+# TWILIO_AUTH_TOKEN
+# TWILIO_SID
