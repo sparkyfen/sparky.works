@@ -22,7 +22,6 @@ const Workers = {
       });
     }
     const workerDetails = listWorkersJson.result
-    .filter((worker) => !worker.routes)
     .map((worker) => ({
       id: worker.id,
       created_on: worker.created_on,
