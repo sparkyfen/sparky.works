@@ -111,13 +111,28 @@ const Workers = {
       });
       return new Response(JSON.stringify({message: errorMessage}), {status, headers: defaultHeaders});
     }
-    const workerAnalytics = workerAnalyticsJson.data.viewer.accounts[0].workersInvocationsAdaptive.map((workerData) => ({
-      id: workerData.dimensions.scriptName,
-      status: workerData.dimensions.status,
-      total_requests: workerData.sum.requests,
-      total_errors: workerData.sum.errors,
-      environment: workerData.dimensions.environmentName,
-    }));
+    const invocations = workerAnalyticsJson.data.viewer.accounts[0].workersInvocationsAdaptive;
+    const workerAnalytics = invocations.map(
+      (workerData) => {
+        let totalErrors = workerData.sum.errors;
+        let totalRequests = workerData.sum.requests;
+
+        const errorEntry = invocations.find((invocation) => {
+          return invocation.dimensions.scriptName === workerData.dimensions.scriptName && invocation.sum.errors > 0
+        });
+        if (errorEntry) {
+          totalRequests += errorEntry.sum.requests;
+          totalErrors += errorEntry.sum.errors;
+        }
+        return {
+          id: workerData.dimensions.scriptName,
+          status: workerData.dimensions.status,
+          total_requests: totalRequests,
+          total_errors: totalErrors,
+          environment: workerData.dimensions.environmentName,
+        };
+      }
+    ).filter((workerData) => workerData.status !== 'scriptThrewException');
     return new Response(JSON.stringify(workerAnalytics), { headers: {
       ...defaultHeaders,
       'Cache-Control': 'public, max-age=300'
