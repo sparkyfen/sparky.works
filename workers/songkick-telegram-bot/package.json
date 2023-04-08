@@ -1,0 +1,19 @@
+{
+  "name": "@sparky.works/worker/songkick-telegram-bot",
+  "version": "1.0.0",
+  "description": "A Cloudflare worker that sends Songkick event information to a Telegram channel",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "wrangler dev",
+    "publish": "wrangler publish"
+  },
+  "dependencies": {
+    "typescript": "^4.7.4",
+    "wrangler": "2.14.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20230404.0",
+    "@types/node": "^16.11.15"
+  }
+}

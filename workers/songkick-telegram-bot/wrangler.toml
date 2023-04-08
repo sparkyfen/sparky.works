@@ -1,0 +1,18 @@
+name = "songkick-telegram-bot"
+compatibility_date = "2023-03-07"
+account_id = "ae6e658c037606bf7536325a439f3456"
+workers_dev = true
+main = "dist/index.js"
+
+[build]
+command = "npm run build"
+
+[env.production]
+name = "songkick-telegram-bot"
+account_id = "ae6e658c037606bf7536325a439f3456"
+route = "songkick-telegram-bot.sparky.works/*"
+workers_dev = false
+
+[triggers]
+# Schedule the worker to run every Monday at 10am PST
+crons = ["0 17 * * 1"]
