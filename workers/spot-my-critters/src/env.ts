@@ -5,9 +5,6 @@ export interface Env {
 
   // Vars
   TIMEZONE: string;
-  TM_CITY: string;
-  TM_STATE_CODE: string;
-  TM_RADIUS_MILES: string;
   SCORE_THRESHOLD: string;
   DIGEST_DAYS: string;
   UPCOMING_MAX_DAYS: string;

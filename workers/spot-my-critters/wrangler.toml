@@ -15,9 +15,6 @@ crons = ["0 17 * * 1"]
 # Non-secret config.
 [vars]
 TIMEZONE = "America/Los_Angeles"
-TM_CITY = "Seattle"
-TM_STATE_CODE = "WA"
-TM_RADIUS_MILES = "25"
 SCORE_THRESHOLD = "2.0"
 DIGEST_DAYS = "7"
 UPCOMING_MAX_DAYS = "100"
@@ -37,7 +34,6 @@ id = "441fafc4bead4b15814b5f23d7b6d736"
 
 # Secrets (set via `wrangler secret put <NAME>`):
 #   TELEGRAM_BOT_TOKEN
-#   TELEGRAM_CHAT_ID
 #   SPOTIFY_CLIENT_ID
 #   SPOTIFY_CLIENT_SECRET
 #   LASTFM_API_KEY

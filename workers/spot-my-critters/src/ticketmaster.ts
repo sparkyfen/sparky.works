@@ -81,22 +81,32 @@ function isoZ(d: Date): string {
   return d.toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
+export interface EventQuery {
+  latitude: number;
+  longitude: number;
+  radiusMiles: number;
+}
+
 export async function getEventsInWindow(
   env: Env,
+  query: EventQuery,
   startDate: Date,
   endDate: Date
 ): Promise<TMEvent[]> {
-  // Bucket the window to whole-day boundaries so cache keys hit across calls within a day.
   const startDay = startDate.toISOString().slice(0, 10);
   const endDay = endDate.toISOString().slice(0, 10);
-  const cacheKey = `tm:${env.TM_CITY}:${env.TM_STATE_CODE}:${env.TM_RADIUS_MILES}:${startDay}:${endDay}`;
+  // Bucket coords to ~1km so users in the same neighborhood share cache entries.
+  const lat = query.latitude.toFixed(2);
+  const lng = query.longitude.toFixed(2);
+  const cacheKey = `tm:${lat}:${lng}:${query.radiusMiles}:${startDay}:${endDay}`;
   return cached(env, cacheKey, TTL_EVENTS, () =>
-    fetchEventsInWindow(env, startDate, endDate)
+    fetchEventsInWindow(env, query, startDate, endDate)
   );
 }
 
 async function fetchEventsInWindow(
   env: Env,
+  query: EventQuery,
   startDate: Date,
   endDate: Date
 ): Promise<TMEvent[]> {
@@ -105,9 +115,8 @@ async function fetchEventsInWindow(
   for (let page = 0; page < 5; page++) {
     const qs = new URLSearchParams({
       apikey: env.TICKETMASTER_API_KEY,
-      city: env.TM_CITY,
-      stateCode: env.TM_STATE_CODE,
-      radius: env.TM_RADIUS_MILES,
+      latlong: `${query.latitude},${query.longitude}`,
+      radius: String(query.radiusMiles),
       unit: "miles",
       classificationName: "music",
       startDateTime: isoZ(startDate),

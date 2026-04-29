@@ -6,9 +6,12 @@ import {
   listTrackedLastfmUsers,
   registerUser,
   setLastfmUsername,
+  setUserLocation,
+  setUserRadius,
   untrackLastfmUser,
 } from "./storage";
 import { getFriends } from "./lastfm";
+import { reverseGeocode } from "./geocode";
 
 const FRIENDS_PAGE_SIZE = 10;
 
@@ -55,6 +58,21 @@ function formatPT(iso: string | undefined, localDate: string, tz: string): strin
   });
 }
 
+function gcalLink(s: ScoredEvent): string {
+  // Google Calendar quick-add URL. Default to a 3-hour block when we only have a date.
+  const start = s.event.dateTimeIso ? new Date(s.event.dateTimeIso) : new Date(s.event.localDate + "T20:00:00");
+  const end = new Date(start.getTime() + 3 * 3600 * 1000);
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]|\.\d{3}/g, "");
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: s.matchedName,
+    dates: `${fmt(start)}/${fmt(end)}`,
+    details: s.event.url,
+    location: s.event.venueName ?? "",
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 export function renderDigest(
   scored: ScoredEvent[],
   opts: { headerLabel: string; tz: string; prices?: Map<string, number> }
@@ -69,10 +87,11 @@ export function renderDigest(
     const price = opts.prices?.get(s.event.id);
     const priceStr = price !== undefined ? ` · from $${price}` : "";
     const reasons = s.reasons.length ? ` — <i>${escHtml(s.reasons.join(", "))}</i>` : "";
+    const cal = ` · <a href="${escHtml(gcalLink(s))}">📅</a>`;
     lines.push(
       `• <a href="${escHtml(s.event.url)}">${escHtml(s.matchedName)}</a> @ ${escHtml(
         venue
-      )} — ${escHtml(when)}${priceStr}${reasons}`
+      )} — ${escHtml(when)}${priceStr}${cal}${reasons}`
     );
   }
   return lines.join("\n");
@@ -84,6 +103,8 @@ interface Update {
   message?: {
     chat: { id: number; type: string };
     text?: string;
+    location?: { latitude: number; longitude: number };
+    venue?: { location: { latitude: number; longitude: number }; title?: string; address?: string };
     from?: { id: number; username?: string };
   };
   callback_query?: {
@@ -190,13 +211,14 @@ async function handleCommand(ctx: CommandContext, text: string): Promise<void> {
         [
           "👋 Welcome to Spot My Critters.",
           "",
-          "I post a weekly digest of <b>Seattle</b> shows ranked by what you (and your Last.fm friends) actually listen to. Seattle-only for now.",
+          "I post a weekly digest of upcoming shows ranked by what you (and your Last.fm friends) actually listen to.",
           "",
-          "Two-step setup:",
-          "1. <code>/lastfm &lt;your username&gt;</code>",
-          "2. <code>/spotify</code> to connect your Spotify",
+          "Setup:",
+          "1. 📎 → Location → share your area, or <code>/city &lt;City, State&gt;</code>",
+          "2. <code>/lastfm &lt;your username&gt;</code>",
+          "3. <code>/spotify</code> to connect your Spotify",
           "",
-          "Then <code>/friends</code> to pick which Last.fm friends to track, and <code>/upcoming</code> for an on-demand peek.",
+          "Then <code>/friends</code> to pick Last.fm friends to track, <code>/upcoming</code> for an on-demand peek, and <code>/radius &lt;miles&gt;</code> to widen the search.",
         ].join("\n"),
         { chatId }
       );
@@ -274,6 +296,54 @@ async function handleCommand(ctx: CommandContext, text: string): Promise<void> {
       );
       return;
     }
+    case "/city": {
+      const user = await getUser(env, fromId);
+      if (!user) return sendMessage(env, NEED_REGISTER, { chatId });
+      if (!arg) {
+        await sendMessage(
+          env,
+          "Share your location 📎 or use <code>/city Seattle, WA</code>.",
+          { chatId }
+        );
+        return;
+      }
+      // Forward-geocode via Nominatim search.
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(arg)}`;
+      const res = await fetch(url, {
+        headers: { "User-Agent": "spot-my-critters (https://github.com/sparkyfen/sparky.works)" },
+      });
+      const hits = (await res.json()) as Array<{
+        lat: string;
+        lon: string;
+        address?: { city?: string; town?: string; village?: string; "ISO3166-2-lvl4"?: string };
+      }>;
+      const hit = hits[0];
+      if (!hit) {
+        await sendMessage(env, `Couldn't find "<b>${escHtml(arg)}</b>". Try sharing a location instead.`, { chatId });
+        return;
+      }
+      const lat = parseFloat(hit.lat);
+      const lon = parseFloat(hit.lon);
+      const city = hit.address?.city ?? hit.address?.town ?? hit.address?.village ?? null;
+      const iso = hit.address?.["ISO3166-2-lvl4"];
+      const stateCode = iso?.includes("-") ? iso.split("-")[1]! : null;
+      await setUserLocation(env, fromId, { city, stateCode, latitude: lat, longitude: lon });
+      const label = [city, stateCode].filter(Boolean).join(", ") || `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+      await sendMessage(env, `Location set: <b>${escHtml(label)}</b> ✓`, { chatId });
+      return;
+    }
+    case "/radius": {
+      const user = await getUser(env, fromId);
+      if (!user) return sendMessage(env, NEED_REGISTER, { chatId });
+      const n = parseInt(arg, 10);
+      if (!Number.isFinite(n) || n < 1 || n > 200) {
+        await sendMessage(env, "Usage: <code>/radius &lt;miles&gt;</code> (1–200)", { chatId });
+        return;
+      }
+      await setUserRadius(env, fromId, n);
+      await sendMessage(env, `Search radius set to <b>${n} mi</b> ✓`, { chatId });
+      return;
+    }
     case "/upcoming": {
       const user = await getUser(env, fromId);
       if (!user) return sendMessage(env, NEED_REGISTER, { chatId });
@@ -287,7 +357,7 @@ async function handleCommand(ctx: CommandContext, text: string): Promise<void> {
     default:
       await sendMessage(
         env,
-        "Commands:\n/start\n/lastfm &lt;name&gt;\n/spotify\n/friends\n/track &lt;name&gt;\n/untrack &lt;name&gt;\n/tracked\n/upcoming [days]\n/ping",
+        "Commands:\n/start\n/city &lt;City, State&gt; (or share location 📎)\n/radius &lt;miles&gt;\n/lastfm &lt;name&gt;\n/spotify\n/friends\n/track &lt;name&gt;\n/untrack &lt;name&gt;\n/tracked\n/upcoming [days]\n/ping",
         { chatId }
       );
   }
@@ -324,8 +394,40 @@ export async function handleTelegramUpdate(
   }
 
   const message = update.message;
-  if (!message?.text || !message.from) return;
+  if (!message?.from) return;
   const fromId = message.from.id;
+
+  // Location share (or venue forward) sets the user's lat/long.
+  const loc = message.location ?? message.venue?.location;
+  if (loc) {
+    if (message.chat.type !== "private") {
+      await sendMessage(baseCtx.env, "DM the bot to share a location.", { chatId: message.chat.id });
+      return;
+    }
+    const user = await getUser(baseCtx.env, fromId);
+    if (!user) {
+      await sendMessage(baseCtx.env, "Send /start in a DM to register first.", {
+        chatId: message.chat.id,
+      });
+      return;
+    }
+    const geo = await reverseGeocode(baseCtx.env, loc.latitude, loc.longitude);
+    await setUserLocation(baseCtx.env, fromId, {
+      city: geo.city,
+      stateCode: geo.stateCode,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+    });
+    const label =
+      [geo.city, geo.stateCode].filter(Boolean).join(", ") ||
+      `${loc.latitude.toFixed(2)}, ${loc.longitude.toFixed(2)}`;
+    await sendMessage(baseCtx.env, `Location saved: <b>${escHtml(label)}</b> ✓`, {
+      chatId: message.chat.id,
+    });
+    return;
+  }
+
+  if (!message.text) return;
   await handleCommand(
     {
       env: baseCtx.env,

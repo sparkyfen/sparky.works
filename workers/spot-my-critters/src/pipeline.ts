@@ -128,6 +128,11 @@ export async function runDigestForUser(
   return filtered;
 }
 
+function userLocation(user: User): { latitude: number; longitude: number; radiusMiles: number } | null {
+  if (user.latitude == null || user.longitude == null || user.radiusMiles == null) return null;
+  return { latitude: user.latitude, longitude: user.longitude, radiusMiles: user.radiusMiles };
+}
+
 export async function runDigestOnDemand(
   env: Env,
   tgUserId: number,
@@ -138,16 +143,29 @@ export async function runDigestOnDemand(
     await sendMessage(env, "DM /start to register first.", { chatId: tgUserId });
     return [];
   }
+  const loc = userLocation(user);
+  if (!loc) {
+    await sendMessage(
+      env,
+      "Set your location first — share a location 📎 or use /city &lt;City, State&gt;.",
+      { chatId: tgUserId }
+    );
+    return [];
+  }
   const now = new Date();
   const end = new Date(now.getTime() + opts.days * 86400 * 1000);
-  const events = await getEventsInWindow(env, now, end);
+  const events = await getEventsInWindow(env, loc, now, end);
   return runDigestForUser(env, user, events, opts);
 }
 
-export async function fetchEventsWindow(env: Env, days: number): Promise<TMEvent[]> {
+export async function fetchEventsWindow(
+  env: Env,
+  query: { latitude: number; longitude: number; radiusMiles: number },
+  days: number
+): Promise<TMEvent[]> {
   const now = new Date();
   const end = new Date(now.getTime() + days * 86400 * 1000);
-  return getEventsInWindow(env, now, end);
+  return getEventsInWindow(env, query, now, end);
 }
 
 export { pruneOldPostedEvents };

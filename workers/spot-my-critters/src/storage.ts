@@ -4,27 +4,50 @@ export interface User {
   tgUserId: number;
   tgUsername: string | null;
   lastfmUsername: string | null;
+  city: string | null;
+  stateCode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  radiusMiles: number | null;
   registeredAt: number;
+}
+
+interface UserRow {
+  tg_user_id: number;
+  tg_username: string | null;
+  lastfm_username: string | null;
+  city: string | null;
+  state_code: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  radius_miles: number | null;
+  registered_at: number;
+}
+
+const USER_COLUMNS =
+  "tg_user_id, tg_username, lastfm_username, city, state_code, latitude, longitude, radius_miles, registered_at";
+
+function rowToUser(r: UserRow): User {
+  return {
+    tgUserId: r.tg_user_id,
+    tgUsername: r.tg_username,
+    lastfmUsername: r.lastfm_username,
+    city: r.city,
+    stateCode: r.state_code,
+    latitude: r.latitude,
+    longitude: r.longitude,
+    radiusMiles: r.radius_miles,
+    registeredAt: r.registered_at,
+  };
 }
 
 export async function getUser(env: Env, tgUserId: number): Promise<User | null> {
   const row = await env.DB.prepare(
-    "SELECT tg_user_id, tg_username, lastfm_username, registered_at FROM users WHERE tg_user_id = ?1"
+    `SELECT ${USER_COLUMNS} FROM users WHERE tg_user_id = ?1`
   )
     .bind(tgUserId)
-    .first<{
-      tg_user_id: number;
-      tg_username: string | null;
-      lastfm_username: string | null;
-      registered_at: number;
-    }>();
-  if (!row) return null;
-  return {
-    tgUserId: row.tg_user_id,
-    tgUsername: row.tg_username,
-    lastfmUsername: row.lastfm_username,
-    registeredAt: row.registered_at,
-  };
+    .first<UserRow>();
+  return row ? rowToUser(row) : null;
 }
 
 export async function registerUser(
@@ -53,19 +76,36 @@ export async function setLastfmUsername(
 
 export async function listAllUsers(env: Env): Promise<User[]> {
   const { results } = await env.DB.prepare(
-    "SELECT tg_user_id, tg_username, lastfm_username, registered_at FROM users"
-  ).all<{
-    tg_user_id: number;
-    tg_username: string | null;
-    lastfm_username: string | null;
-    registered_at: number;
-  }>();
-  return results.map((r) => ({
-    tgUserId: r.tg_user_id,
-    tgUsername: r.tg_username,
-    lastfmUsername: r.lastfm_username,
-    registeredAt: r.registered_at,
-  }));
+    `SELECT ${USER_COLUMNS} FROM users`
+  ).all<UserRow>();
+  return results.map(rowToUser);
+}
+
+export async function setUserLocation(
+  env: Env,
+  tgUserId: number,
+  loc: {
+    city: string | null;
+    stateCode: string | null;
+    latitude: number;
+    longitude: number;
+  }
+): Promise<void> {
+  await env.DB.prepare(
+    `UPDATE users SET city = ?1, state_code = ?2, latitude = ?3, longitude = ?4 WHERE tg_user_id = ?5`
+  )
+    .bind(loc.city, loc.stateCode, loc.latitude, loc.longitude, tgUserId)
+    .run();
+}
+
+export async function setUserRadius(
+  env: Env,
+  tgUserId: number,
+  radiusMiles: number
+): Promise<void> {
+  await env.DB.prepare("UPDATE users SET radius_miles = ?1 WHERE tg_user_id = ?2")
+    .bind(radiusMiles, tgUserId)
+    .run();
 }
 
 // --- Tracked Last.fm users (per Telegram user) ---

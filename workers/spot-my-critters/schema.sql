@@ -2,6 +2,11 @@ CREATE TABLE IF NOT EXISTS users (
   tg_user_id INTEGER PRIMARY KEY,
   tg_username TEXT,
   lastfm_username TEXT,
+  city TEXT,
+  state_code TEXT,
+  latitude REAL,
+  longitude REAL,
+  radius_miles INTEGER,
   registered_at INTEGER NOT NULL
 );
 

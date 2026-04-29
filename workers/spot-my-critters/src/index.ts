@@ -120,18 +120,35 @@ async function runWeeklyDigest(env: Env, days: number): Promise<void> {
     console.log("weekly digest: no registered users");
     return;
   }
-  const events = await fetchEventsWindow(env, days);
+  // Group by location bucket so users in the same area share one TM fetch.
+  const groups = new Map<string, typeof users>();
   for (const user of users) {
-    try {
-      const out = await runDigestForUser(env, user, events, {
-        days,
-        writeDedupe: true,
-        headerLabel: `🎸 Seattle shows — next ${days} days`,
-        withPrices: true,
-      });
-      console.log(`digest user=${user.tgUserId}: posted ${out.length} events`);
-    } catch (e) {
-      console.log(`digest user=${user.tgUserId} failed: ${(e as Error).message}`);
+    if (user.latitude == null || user.longitude == null || user.radiusMiles == null) continue;
+    const key = `${user.latitude.toFixed(2)}:${user.longitude.toFixed(2)}:${user.radiusMiles}`;
+    const arr = groups.get(key) ?? [];
+    arr.push(user);
+    groups.set(key, arr);
+  }
+  for (const groupUsers of groups.values()) {
+    const head = groupUsers[0]!;
+    const events = await fetchEventsWindow(
+      env,
+      { latitude: head.latitude!, longitude: head.longitude!, radiusMiles: head.radiusMiles! },
+      days
+    );
+    const cityLabel = head.city ?? "Local";
+    for (const user of groupUsers) {
+      try {
+        const out = await runDigestForUser(env, user, events, {
+          days,
+          writeDedupe: true,
+          headerLabel: `🎸 ${cityLabel} shows — next ${days} days`,
+          withPrices: true,
+        });
+        console.log(`digest user=${user.tgUserId}: posted ${out.length} events`);
+      } catch (e) {
+        console.log(`digest user=${user.tgUserId} failed: ${(e as Error).message}`);
+      }
     }
   }
   await pruneOldPostedEvents(env);
