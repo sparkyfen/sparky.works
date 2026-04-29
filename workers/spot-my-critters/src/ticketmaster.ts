@@ -1,4 +1,7 @@
 import type { Env } from "./env";
+import { cached } from "./cache";
+
+const TTL_EVENTS = 10 * 60; // 10m
 
 export interface TMAttraction {
   id: string;
@@ -79,6 +82,20 @@ function isoZ(d: Date): string {
 }
 
 export async function getEventsInWindow(
+  env: Env,
+  startDate: Date,
+  endDate: Date
+): Promise<TMEvent[]> {
+  // Bucket the window to whole-day boundaries so cache keys hit across calls within a day.
+  const startDay = startDate.toISOString().slice(0, 10);
+  const endDay = endDate.toISOString().slice(0, 10);
+  const cacheKey = `tm:${env.TM_CITY}:${env.TM_STATE_CODE}:${env.TM_RADIUS_MILES}:${startDay}:${endDay}`;
+  return cached(env, cacheKey, TTL_EVENTS, () =>
+    fetchEventsInWindow(env, startDate, endDate)
+  );
+}
+
+async function fetchEventsInWindow(
   env: Env,
   startDate: Date,
   endDate: Date
