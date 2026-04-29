@@ -1,0 +1,47 @@
+name = "spot-my-critters"
+main = "src/index.ts"
+compatibility_date = "2025-01-15"
+workers_dev = true
+
+# Custom route on sparky.works. Zone must exist in this CF account.
+routes = [
+  { pattern = "spot-my-critters.sparky.works", custom_domain = true }
+]
+
+# Weekly digest: Mondays 17:00 UTC = 10:00 PT (PST). Re-evaluate during DST if you care.
+[triggers]
+crons = ["0 17 * * 1"]
+
+# Non-secret config.
+[vars]
+TIMEZONE = "America/Los_Angeles"
+TM_CITY = "Seattle"
+TM_STATE_CODE = "WA"
+TM_RADIUS_MILES = "25"
+SCORE_THRESHOLD = "2.0"
+DIGEST_DAYS = "7"
+UPCOMING_MAX_DAYS = "100"
+# OAuth callback (must match what's set in the Spotify app dashboard).
+SPOTIFY_REDIRECT_URI = "https://spot-my-critters.sparky.works/oauth/spotify/callback"
+# Secret used to gate /debug/digest. Override via `wrangler secret put DEBUG_KEY` if you prefer.
+
+# Bindings — fill in IDs after `wrangler d1 create` and `wrangler kv:namespace create`.
+[[d1_databases]]
+binding = "DB"
+database_name = "spot-my-critters"
+database_id = "f38d31e1-2fdc-4510-9b56-e0d962505acf"
+
+[[kv_namespaces]]
+binding = "TOKENS"
+id = "441fafc4bead4b15814b5f23d7b6d736"
+
+# Secrets (set via `wrangler secret put <NAME>`):
+#   TELEGRAM_BOT_TOKEN
+#   TELEGRAM_CHAT_ID
+#   SPOTIFY_CLIENT_ID
+#   SPOTIFY_CLIENT_SECRET
+#   LASTFM_API_KEY
+#   TICKETMASTER_API_KEY
+#   SEATGEEK_CLIENT_ID        (optional)
+#   DEBUG_KEY                 (any random string; gates /debug/digest)
+#   TELEGRAM_WEBHOOK_SECRET   (random; set in Telegram setWebhook and verify on incoming)
