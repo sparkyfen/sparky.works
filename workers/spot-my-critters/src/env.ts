@@ -19,4 +19,5 @@ export interface Env {
   TICKETMASTER_API_KEY: string;
   SEATGEEK_CLIENT_ID?: string;
   DEBUG_KEY: string;
+  ICS_SIGNING_KEY: string;
 }

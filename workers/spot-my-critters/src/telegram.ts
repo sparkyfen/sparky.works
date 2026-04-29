@@ -12,6 +12,7 @@ import {
 } from "./storage";
 import { getFriends } from "./lastfm";
 import { reverseGeocode } from "./geocode";
+import { icsPayload, sign } from "./sign";
 
 const FRIENDS_PAGE_SIZE = 10;
 
@@ -78,33 +79,37 @@ function gcalLink(s: ScoredEvent): string {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-function icsLink(env: Env, s: ScoredEvent): string {
-  const params = new URLSearchParams({
+async function icsLink(env: Env, s: ScoredEvent): Promise<string> {
+  const fields = {
     n: s.matchedName,
     s: eventStart(s).toISOString(),
     id: s.event.id,
     loc: s.event.venueName ?? "",
     u: s.event.url,
-  });
+  };
+  const sig = await sign(env.ICS_SIGNING_KEY, icsPayload(fields));
+  const params = new URLSearchParams({ ...fields, sig });
   return `${new URL(env.SPOTIFY_REDIRECT_URI).origin}/ics?${params.toString()}`;
 }
 
-export function renderDigest(
+export async function renderDigest(
   env: Env,
   scored: ScoredEvent[],
   opts: { headerLabel: string; tz: string; prices?: Map<string, number> }
-): string {
+): Promise<string> {
   if (scored.length === 0) {
     return `<b>${escHtml(opts.headerLabel)}</b>\nNo matching shows. 🦗`;
   }
+  const icsLinks = await Promise.all(scored.map((s) => icsLink(env, s)));
   const lines: string[] = [`<b>${escHtml(opts.headerLabel)}</b>`];
-  for (const s of scored) {
+  for (let i = 0; i < scored.length; i++) {
+    const s = scored[i]!;
     const when = formatPT(s.event.dateTimeIso, s.event.localDate, opts.tz);
     const venue = s.event.venueName ?? "";
     const price = opts.prices?.get(s.event.id);
     const priceStr = price !== undefined ? ` · from $${price}` : "";
     const reasons = s.reasons.length ? ` — <i>${escHtml(s.reasons.join(", "))}</i>` : "";
-    const cal = ` · <a href="${escHtml(gcalLink(s))}">📅</a><a href="${escHtml(icsLink(env, s))}">🍎</a>`;
+    const cal = ` · <a href="${escHtml(gcalLink(s))}">📅</a><a href="${escHtml(icsLinks[i]!)}">🍎</a>`;
     lines.push(
       `• <a href="${escHtml(s.event.url)}">${escHtml(s.matchedName)}</a> @ ${escHtml(
         venue

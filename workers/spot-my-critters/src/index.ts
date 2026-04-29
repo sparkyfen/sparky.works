@@ -8,6 +8,7 @@ import {
 } from "./pipeline";
 import { listAllUsers } from "./storage";
 import { handleTelegramUpdate, sendMessage } from "./telegram";
+import { icsPayload, verify } from "./sign";
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
@@ -110,8 +111,17 @@ export default {
       const name = url.searchParams.get("n");
       const start = url.searchParams.get("s");
       const id = url.searchParams.get("id");
-      if (!name || !start || !id) return new Response("missing params", { status: 400 });
+      const sig = url.searchParams.get("sig");
+      const venue = url.searchParams.get("loc") ?? "";
+      const eventUrl = url.searchParams.get("u") ?? "";
+      if (!name || !start || !id || !sig) return new Response("missing params", { status: 400 });
       if (!/^[A-Za-z0-9_-]+$/.test(id)) return new Response("bad id", { status: 400 });
+      const ok = await verify(
+        env.ICS_SIGNING_KEY,
+        icsPayload({ n: name, s: start, id, loc: venue, u: eventUrl }),
+        sig
+      );
+      if (!ok) return new Response("bad signature", { status: 403 });
       const startDate = new Date(start);
       if (isNaN(startDate.getTime())) return new Response("bad start", { status: 400 });
       const endDate = new Date(startDate.getTime() + 3 * 3600 * 1000);
@@ -122,8 +132,6 @@ export default {
           .replace(/\r\n|\r|\n/g, "\\n")
           .replace(/,/g, "\\,")
           .replace(/;/g, "\\;");
-      const venue = url.searchParams.get("loc") ?? "";
-      const eventUrl = url.searchParams.get("u") ?? "";
       const ics = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
