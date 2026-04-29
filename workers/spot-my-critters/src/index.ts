@@ -111,12 +111,17 @@ export default {
       const start = url.searchParams.get("s");
       const id = url.searchParams.get("id");
       if (!name || !start || !id) return new Response("missing params", { status: 400 });
+      if (!/^[A-Za-z0-9_-]+$/.test(id)) return new Response("bad id", { status: 400 });
       const startDate = new Date(start);
       if (isNaN(startDate.getTime())) return new Response("bad start", { status: 400 });
       const endDate = new Date(startDate.getTime() + 3 * 3600 * 1000);
       const fmt = (d: Date) => d.toISOString().replace(/[-:]|\.\d{3}/g, "");
       const escIcs = (s: string) =>
-        s.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+        s
+          .replace(/\\/g, "\\\\")
+          .replace(/\r\n|\r|\n/g, "\\n")
+          .replace(/,/g, "\\,")
+          .replace(/;/g, "\\;");
       const venue = url.searchParams.get("loc") ?? "";
       const eventUrl = url.searchParams.get("u") ?? "";
       const ics = [
