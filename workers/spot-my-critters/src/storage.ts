@@ -68,49 +68,52 @@ export async function listAllUsers(env: Env): Promise<User[]> {
   }));
 }
 
-// --- Followed friends (per user) ---
+// --- Tracked Last.fm users (per Telegram user) ---
 
-export async function listFollowedFriends(env: Env, tgUserId: number): Promise<string[]> {
+export async function listTrackedLastfmUsers(
+  env: Env,
+  tgUserId: number
+): Promise<string[]> {
   const { results } = await env.DB.prepare(
-    "SELECT lastfm_username FROM followed_friends WHERE tg_user_id = ?1 ORDER BY lastfm_username"
+    "SELECT lastfm_username FROM tracked_lastfm_users WHERE tg_user_id = ?1 ORDER BY lastfm_username"
   )
     .bind(tgUserId)
     .all<{ lastfm_username: string }>();
   return results.map((r) => r.lastfm_username);
 }
 
-export async function isFollowed(
+export async function isLastfmUserTracked(
   env: Env,
   tgUserId: number,
   username: string
 ): Promise<boolean> {
   const row = await env.DB.prepare(
-    "SELECT 1 FROM followed_friends WHERE tg_user_id = ?1 AND lastfm_username = ?2"
+    "SELECT 1 FROM tracked_lastfm_users WHERE tg_user_id = ?1 AND lastfm_username = ?2"
   )
     .bind(tgUserId, username)
     .first();
   return row !== null;
 }
 
-export async function followFriend(
+export async function trackLastfmUser(
   env: Env,
   tgUserId: number,
   username: string
 ): Promise<void> {
   await env.DB.prepare(
-    "INSERT OR IGNORE INTO followed_friends (tg_user_id, lastfm_username, added_at) VALUES (?1, ?2, ?3)"
+    "INSERT OR IGNORE INTO tracked_lastfm_users (tg_user_id, lastfm_username, added_at) VALUES (?1, ?2, ?3)"
   )
     .bind(tgUserId, username, Math.floor(Date.now() / 1000))
     .run();
 }
 
-export async function unfollowFriend(
+export async function untrackLastfmUser(
   env: Env,
   tgUserId: number,
   username: string
 ): Promise<void> {
   await env.DB.prepare(
-    "DELETE FROM followed_friends WHERE tg_user_id = ?1 AND lastfm_username = ?2"
+    "DELETE FROM tracked_lastfm_users WHERE tg_user_id = ?1 AND lastfm_username = ?2"
   )
     .bind(tgUserId, username)
     .run();

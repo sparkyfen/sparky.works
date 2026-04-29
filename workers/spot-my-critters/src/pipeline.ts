@@ -15,7 +15,7 @@ import {
   getSpotifyRefreshToken,
   getUser,
   hasPostedEvent,
-  listFollowedFriends,
+  listTrackedLastfmUsers,
   pruneOldPostedEvents,
   recordPostedEvents,
   type User,
@@ -52,7 +52,7 @@ async function gatherSignalsForUser(env: Env, user: User) {
     ? await safe(() => getUserTopArtists(env, user.lastfmUsername!, 50), [] as string[])
     : [];
 
-  const friends = await listFollowedFriends(env, user.tgUserId);
+  const friends = await listTrackedLastfmUsers(env, user.tgUserId);
   const since = Math.floor(Date.now() / 1000) - 14 * 86400;
   const friendTopByUser: Record<string, string[]> = {};
   const friendRecentByUser: Record<string, string[]> = {};

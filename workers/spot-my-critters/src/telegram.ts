@@ -1,12 +1,12 @@
 import type { Env } from "./env";
 import type { ScoredEvent } from "./ranking";
 import {
-  followFriend,
+  trackLastfmUser,
   getUser,
-  listFollowedFriends,
+  listTrackedLastfmUsers,
   registerUser,
   setLastfmUsername,
-  unfollowFriend,
+  untrackLastfmUser,
 } from "./storage";
 import { getFriends } from "./lastfm";
 
@@ -141,7 +141,7 @@ async function renderFriendsKeyboard(
     };
   }
   const friends = await getFriends(env, user.lastfmUsername);
-  const followed = new Set(await listFollowedFriends(env, tgUserId));
+  const followed = new Set(await listTrackedLastfmUsers(env, tgUserId));
   const totalPages = Math.max(1, Math.ceil(friends.length / FRIENDS_PAGE_SIZE));
   const p = Math.max(0, Math.min(page, totalPages - 1));
   const slice = friends.slice(p * FRIENDS_PAGE_SIZE, (p + 1) * FRIENDS_PAGE_SIZE);
@@ -251,7 +251,7 @@ async function handleCommand(ctx: CommandContext, text: string): Promise<void> {
       const user = await getUser(env, fromId);
       if (!user) return sendMessage(env, NEED_REGISTER, { chatId });
       if (!arg) return sendMessage(env, "Usage: /track <lastfm_username>", { chatId });
-      await followFriend(env, fromId, arg);
+      await trackLastfmUser(env, fromId, arg);
       await sendMessage(env, `Now tracking <b>${escHtml(arg)}</b>`, { chatId });
       return;
     }
@@ -259,14 +259,14 @@ async function handleCommand(ctx: CommandContext, text: string): Promise<void> {
       const user = await getUser(env, fromId);
       if (!user) return sendMessage(env, NEED_REGISTER, { chatId });
       if (!arg) return sendMessage(env, "Usage: /untrack <lastfm_username>", { chatId });
-      await unfollowFriend(env, fromId, arg);
+      await untrackLastfmUser(env, fromId, arg);
       await sendMessage(env, `Untracked <b>${escHtml(arg)}</b>`, { chatId });
       return;
     }
     case "/tracked": {
       const user = await getUser(env, fromId);
       if (!user) return sendMessage(env, NEED_REGISTER, { chatId });
-      const list = await listFollowedFriends(env, fromId);
+      const list = await listTrackedLastfmUsers(env, fromId);
       await sendMessage(
         env,
         list.length ? `Tracking:\n• ${list.map(escHtml).join("\n• ")}` : "Not tracking anyone yet.",
@@ -315,8 +315,8 @@ export async function handleTelegramUpdate(
     if (op === "f" || op === "u") {
       const page = parseInt(parts[parts.length - 1] ?? "0", 10) || 0;
       const name = parts.slice(0, -1).join(":");
-      if (op === "f") await followFriend(baseCtx.env, fromId, name);
-      else await unfollowFriend(baseCtx.env, fromId, name);
+      if (op === "f") await trackLastfmUser(baseCtx.env, fromId, name);
+      else await untrackLastfmUser(baseCtx.env, fromId, name);
       await editFriendsKeyboard(baseCtx.env, fromId, msg.chat.id, msg.message_id, page);
       return answerCallback(baseCtx.env, cq.id, op === "f" ? "Tracking" : "Untracked");
     }
