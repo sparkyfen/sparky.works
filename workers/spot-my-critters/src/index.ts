@@ -106,6 +106,47 @@ export default {
       }
     }
 
+    if (request.method === "GET" && url.pathname === "/ics") {
+      const name = url.searchParams.get("n");
+      const start = url.searchParams.get("s");
+      const id = url.searchParams.get("id");
+      if (!name || !start || !id) return new Response("missing params", { status: 400 });
+      const startDate = new Date(start);
+      if (isNaN(startDate.getTime())) return new Response("bad start", { status: 400 });
+      const endDate = new Date(startDate.getTime() + 3 * 3600 * 1000);
+      const fmt = (d: Date) => d.toISOString().replace(/[-:]|\.\d{3}/g, "");
+      const escIcs = (s: string) =>
+        s.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+      const venue = url.searchParams.get("loc") ?? "";
+      const eventUrl = url.searchParams.get("u") ?? "";
+      const ics = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//spot-my-critters//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "BEGIN:VEVENT",
+        `UID:${id}@spot-my-critters`,
+        `DTSTAMP:${fmt(new Date())}`,
+        `DTSTART:${fmt(startDate)}`,
+        `DTEND:${fmt(endDate)}`,
+        `SUMMARY:${escIcs(name)}`,
+        venue ? `LOCATION:${escIcs(venue)}` : "",
+        eventUrl ? `URL:${escIcs(eventUrl)}` : "",
+        eventUrl ? `DESCRIPTION:${escIcs(eventUrl)}` : "",
+        "END:VEVENT",
+        "END:VCALENDAR",
+      ]
+        .filter(Boolean)
+        .join("\r\n");
+      return new Response(ics, {
+        headers: {
+          "content-type": "text/calendar; charset=utf-8",
+          "content-disposition": `attachment; filename="${id}.ics"`,
+        },
+      });
+    }
+
     if (url.pathname === "/") {
       return new Response("spot-my-critters ok");
     }

@@ -58,9 +58,14 @@ function formatPT(iso: string | undefined, localDate: string, tz: string): strin
   });
 }
 
+function eventStart(s: ScoredEvent): Date {
+  return s.event.dateTimeIso
+    ? new Date(s.event.dateTimeIso)
+    : new Date(s.event.localDate + "T20:00:00");
+}
+
 function gcalLink(s: ScoredEvent): string {
-  // Google Calendar quick-add URL. Default to a 3-hour block when we only have a date.
-  const start = s.event.dateTimeIso ? new Date(s.event.dateTimeIso) : new Date(s.event.localDate + "T20:00:00");
+  const start = eventStart(s);
   const end = new Date(start.getTime() + 3 * 3600 * 1000);
   const fmt = (d: Date) => d.toISOString().replace(/[-:]|\.\d{3}/g, "");
   const params = new URLSearchParams({
@@ -73,7 +78,19 @@ function gcalLink(s: ScoredEvent): string {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+function icsLink(env: Env, s: ScoredEvent): string {
+  const params = new URLSearchParams({
+    n: s.matchedName,
+    s: eventStart(s).toISOString(),
+    id: s.event.id,
+    loc: s.event.venueName ?? "",
+    u: s.event.url,
+  });
+  return `${new URL(env.SPOTIFY_REDIRECT_URI).origin}/ics?${params.toString()}`;
+}
+
 export function renderDigest(
+  env: Env,
   scored: ScoredEvent[],
   opts: { headerLabel: string; tz: string; prices?: Map<string, number> }
 ): string {
@@ -87,7 +104,7 @@ export function renderDigest(
     const price = opts.prices?.get(s.event.id);
     const priceStr = price !== undefined ? ` · from $${price}` : "";
     const reasons = s.reasons.length ? ` — <i>${escHtml(s.reasons.join(", "))}</i>` : "";
-    const cal = ` · <a href="${escHtml(gcalLink(s))}">📅</a>`;
+    const cal = ` · <a href="${escHtml(gcalLink(s))}">📅</a><a href="${escHtml(icsLink(env, s))}">🍎</a>`;
     lines.push(
       `• <a href="${escHtml(s.event.url)}">${escHtml(s.matchedName)}</a> @ ${escHtml(
         venue

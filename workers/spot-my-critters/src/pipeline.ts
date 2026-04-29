@@ -110,7 +110,7 @@ export async function runDigestForUser(
     );
   }
 
-  const msg = renderDigest(filtered, {
+  const msg = renderDigest(env, filtered, {
     headerLabel: opts.headerLabel,
     tz: env.TIMEZONE,
     prices,
