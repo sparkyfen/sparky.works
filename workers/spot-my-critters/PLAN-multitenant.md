@@ -1,5 +1,7 @@
 # Plan: Multi-tenant bot
 
+> **Historical.** Implemented; the Seattle-only constraint was later replaced by per-user location (`/city`, `/radius`, share-location). Some details (e.g. command names like `/follow`) have since been renamed (`/track`). See the current [README](./README.md) for shipped behavior.
+
 Each Telegram user gets their own Spotify auth, Last.fm username, followed-friends list, and weekly digest in their DM. Seattle is hardcoded for everyone (mention in bot description).
 
 ## Schema (D1)

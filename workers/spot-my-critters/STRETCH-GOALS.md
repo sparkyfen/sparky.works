@@ -4,22 +4,21 @@ Living list. Roughly grouped by effort/impact. Order within a group is rough pri
 
 ---
 
-## Already discussed in this session
+## Shipped
 
-### Result caching for `/upcoming`
-**Why**: each call hits Ticketmaster + Spotify + Last.fm (1 + 2N requests for N followed friends). With ~20 friends you're already near the 50-subrequest free-tier worker cap.
-**Sketch**: KV cache keyed by `(city, days-bucket)` for Ticketmaster, `(lastfm_user)` for friend top/recent. 5–15 min TTL. Skip cache on cron run.
-**Effort**: small.
+- ✅ **Result caching for `/upcoming`** — KV cache for Ticketmaster + Last.fm calls (TM 10m, friends 24h, top artists 6h, recent 30m).
+- ✅ **Per-user city / location** — `/city`, `/radius`, and shared-location messages all work. Cron groups users by location bucket so neighbors share one TM fetch.
+- ✅ **Calendar links** — 📅 (Google Calendar quick-add) and 🍎 (Apple Calendar `.ics`) per event. Apple links are HMAC-signed to prevent forgery.
+- ✅ **Multi-tenant** — each Telegram user has their own Spotify, Last.fm username, tracked friends, dedupe state.
+
+---
+
+## Still on the table
 
 ### Registration allowlist
 **Why**: bot is currently open — anyone who finds it can register and get personalized digests, which costs subrequests.
 **Sketch**: env var `ALLOWED_TG_USER_IDS = "728854954,…"`. `/start` rejects with "ask the owner for access" if not on the list.
 **Effort**: tiny.
-
-### Per-user city
-**Why**: hardcoded Seattle limits the bot to one geography. Real generalization.
-**Sketch**: `users` table gets `city`, `state_code`, `radius_miles` columns. `/city <name>` command. Ticketmaster fetch becomes per-user (kills the "fetch once, score per user" cron optimization — needs grouping by city).
-**Effort**: medium.
 
 ### SeatGeek price lookup
 **Why**: the integration is already wired (`pipeline.ts` + `seatgeek.ts`); just need the API key.
@@ -45,22 +44,17 @@ Living list. Roughly grouped by effort/impact. Order within a group is rough pri
 **Sketch**: separate cron (daily?) that runs the digest with a higher threshold; relies on existing `posted_events` dedupe to avoid re-pinging.
 **Effort**: small. Tune the threshold by feel.
 
-### `.ics` "add to calendar" link per event
-**Why**: clicking through to TM and re-typing a calendar entry is friction.
-**Sketch**: worker route `/ics/<event_id>` returns a generated .ics; render an extra link in the digest line.
-**Effort**: small.
-
 ---
 
 ## Bigger features
 
 ### Bandsintown / Songkick as second event source
-**Why**: Ticketmaster misses smaller venues — the very thing a Seattle indie listener cares about. (Your previous `songkick-telegram-bot` worker presumably hit this.)
+**Why**: Ticketmaster misses smaller venues — the very thing an indie listener cares about. (Your previous `songkick-telegram-bot` worker presumably hit this.)
 **Sketch**: new module `src/bandsintown.ts` returning the same `TMEvent` shape; pipeline merges + dedupes by `(name, venue, localDate)`.
 **Effort**: medium. Real value here.
 
 ### Tour-dates-anywhere mode
-**Why**: for your top artists, knowing they're touring at all is useful for trip planning, even if not Seattle.
+**Why**: for your top artists, knowing they're touring at all is useful for trip planning, even if not local.
 **Sketch**: opt-in flag per user. Separate command `/tours` that runs an artist-first query (vs the current city-first query) for your spotify-top artists only.
 **Effort**: medium.
 
@@ -107,4 +101,4 @@ Living list. Roughly grouped by effort/impact. Order within a group is rough pri
 
 ## Recommendation
 
-If I were picking the next three: **caching**, **`/blacklist`**, **mid-week alerts**. They're all small, all immediately useful, and they together harden the daily-usability of the bot before adding new sources.
+Next up: **`/blacklist`**, then **mid-week alerts**. Both small, both add daily-usability before opening up new event sources.

@@ -1,5 +1,7 @@
 # Spot My Critters — Concert digest bot
 
+> **Historical.** Original single-user design plan. Superseded by [PLAN-multitenant.md](./PLAN-multitenant.md) and the per-user-location work. See the current [README](./README.md) for what shipped.
+
 ## Context
 
 A Telegram bot that posts Seattle concerts worth caring about, based on (a) your own Spotify + Last.fm listening and (b) a curated subset of your Last.fm friends' listening. Rebuilds an earlier Cloudflare Worker (`sparkyfen/sparky.works/workers/songkick-telegram-bot`) that broke when Songkick sunset their public API for non-partners.
