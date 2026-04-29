@@ -1,0 +1,189 @@
+import type { Env } from "./env";
+
+export interface User {
+  tgUserId: number;
+  tgUsername: string | null;
+  lastfmUsername: string | null;
+  registeredAt: number;
+}
+
+export async function getUser(env: Env, tgUserId: number): Promise<User | null> {
+  const row = await env.DB.prepare(
+    "SELECT tg_user_id, tg_username, lastfm_username, registered_at FROM users WHERE tg_user_id = ?1"
+  )
+    .bind(tgUserId)
+    .first<{
+      tg_user_id: number;
+      tg_username: string | null;
+      lastfm_username: string | null;
+      registered_at: number;
+    }>();
+  if (!row) return null;
+  return {
+    tgUserId: row.tg_user_id,
+    tgUsername: row.tg_username,
+    lastfmUsername: row.lastfm_username,
+    registeredAt: row.registered_at,
+  };
+}
+
+export async function registerUser(
+  env: Env,
+  tgUserId: number,
+  tgUsername: string | null
+): Promise<void> {
+  await env.DB.prepare(
+    `INSERT INTO users (tg_user_id, tg_username, registered_at)
+     VALUES (?1, ?2, ?3)
+     ON CONFLICT(tg_user_id) DO UPDATE SET tg_username = excluded.tg_username`
+  )
+    .bind(tgUserId, tgUsername, Math.floor(Date.now() / 1000))
+    .run();
+}
+
+export async function setLastfmUsername(
+  env: Env,
+  tgUserId: number,
+  lastfmUsername: string
+): Promise<void> {
+  await env.DB.prepare("UPDATE users SET lastfm_username = ?1 WHERE tg_user_id = ?2")
+    .bind(lastfmUsername, tgUserId)
+    .run();
+}
+
+export async function listAllUsers(env: Env): Promise<User[]> {
+  const { results } = await env.DB.prepare(
+    "SELECT tg_user_id, tg_username, lastfm_username, registered_at FROM users"
+  ).all<{
+    tg_user_id: number;
+    tg_username: string | null;
+    lastfm_username: string | null;
+    registered_at: number;
+  }>();
+  return results.map((r) => ({
+    tgUserId: r.tg_user_id,
+    tgUsername: r.tg_username,
+    lastfmUsername: r.lastfm_username,
+    registeredAt: r.registered_at,
+  }));
+}
+
+// --- Followed friends (per user) ---
+
+export async function listFollowedFriends(env: Env, tgUserId: number): Promise<string[]> {
+  const { results } = await env.DB.prepare(
+    "SELECT lastfm_username FROM followed_friends WHERE tg_user_id = ?1 ORDER BY lastfm_username"
+  )
+    .bind(tgUserId)
+    .all<{ lastfm_username: string }>();
+  return results.map((r) => r.lastfm_username);
+}
+
+export async function isFollowed(
+  env: Env,
+  tgUserId: number,
+  username: string
+): Promise<boolean> {
+  const row = await env.DB.prepare(
+    "SELECT 1 FROM followed_friends WHERE tg_user_id = ?1 AND lastfm_username = ?2"
+  )
+    .bind(tgUserId, username)
+    .first();
+  return row !== null;
+}
+
+export async function followFriend(
+  env: Env,
+  tgUserId: number,
+  username: string
+): Promise<void> {
+  await env.DB.prepare(
+    "INSERT OR IGNORE INTO followed_friends (tg_user_id, lastfm_username, added_at) VALUES (?1, ?2, ?3)"
+  )
+    .bind(tgUserId, username, Math.floor(Date.now() / 1000))
+    .run();
+}
+
+export async function unfollowFriend(
+  env: Env,
+  tgUserId: number,
+  username: string
+): Promise<void> {
+  await env.DB.prepare(
+    "DELETE FROM followed_friends WHERE tg_user_id = ?1 AND lastfm_username = ?2"
+  )
+    .bind(tgUserId, username)
+    .run();
+}
+
+// --- Posted events (per user) ---
+
+export async function hasPostedEvent(
+  env: Env,
+  tgUserId: number,
+  eventId: string
+): Promise<boolean> {
+  const row = await env.DB.prepare(
+    "SELECT 1 FROM posted_events WHERE tg_user_id = ?1 AND ticketmaster_id = ?2"
+  )
+    .bind(tgUserId, eventId)
+    .first();
+  return row !== null;
+}
+
+export async function recordPostedEvents(
+  env: Env,
+  tgUserId: number,
+  events: Array<{ id: string; eventDate: string }>
+): Promise<void> {
+  if (events.length === 0) return;
+  const now = Math.floor(Date.now() / 1000);
+  const stmt = env.DB.prepare(
+    "INSERT OR IGNORE INTO posted_events (tg_user_id, ticketmaster_id, posted_at, event_date) VALUES (?1, ?2, ?3, ?4)"
+  );
+  await env.DB.batch(events.map((e) => stmt.bind(tgUserId, e.id, now, e.eventDate)));
+}
+
+export async function pruneOldPostedEvents(env: Env): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10);
+  await env.DB.prepare("DELETE FROM posted_events WHERE event_date < ?1")
+    .bind(today)
+    .run();
+}
+
+// --- KV: Spotify tokens (per user) ---
+
+const refreshKey = (tgUserId: number) => `spotify:refresh:${tgUserId}`;
+const accessKey = (tgUserId: number) => `spotify:access:${tgUserId}`;
+
+export async function getSpotifyRefreshToken(
+  env: Env,
+  tgUserId: number
+): Promise<string | null> {
+  return env.TOKENS.get(refreshKey(tgUserId));
+}
+
+export async function setSpotifyRefreshToken(
+  env: Env,
+  tgUserId: number,
+  token: string
+): Promise<void> {
+  await env.TOKENS.put(refreshKey(tgUserId), token);
+}
+
+export async function getSpotifyAccessToken(
+  env: Env,
+  tgUserId: number
+): Promise<string | null> {
+  return env.TOKENS.get(accessKey(tgUserId));
+}
+
+export async function setSpotifyAccessToken(
+  env: Env,
+  tgUserId: number,
+  token: string,
+  expiresInSeconds: number
+): Promise<void> {
+  const ttl = Math.max(60, expiresInSeconds - 60);
+  await env.TOKENS.put(accessKey(tgUserId), token, { expirationTtl: ttl });
+}

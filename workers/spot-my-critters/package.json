@@ -1,0 +1,22 @@
+{
+  "name": "spot-my-critters",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Telegram bot that posts Seattle concerts ranked by my + friends' listening",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:init": "wrangler d1 execute spot-my-critters --remote --file=./schema.sql",
+    "db:init:local": "wrangler d1 execute spot-my-critters --local --file=./schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251101.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "wrangler": "^3.90.0"
+  }
+}
