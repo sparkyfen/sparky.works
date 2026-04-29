@@ -247,29 +247,29 @@ async function handleCommand(ctx: CommandContext, text: string): Promise<void> {
       });
       return;
     }
-    case "/follow": {
+    case "/track": {
       const user = await getUser(env, fromId);
       if (!user) return sendMessage(env, NEED_REGISTER, { chatId });
-      if (!arg) return sendMessage(env, "Usage: /follow <lastfm_username>", { chatId });
+      if (!arg) return sendMessage(env, "Usage: /track <lastfm_username>", { chatId });
       await followFriend(env, fromId, arg);
-      await sendMessage(env, `Now following <b>${escHtml(arg)}</b>`, { chatId });
+      await sendMessage(env, `Now tracking <b>${escHtml(arg)}</b>`, { chatId });
       return;
     }
-    case "/unfollow": {
+    case "/untrack": {
       const user = await getUser(env, fromId);
       if (!user) return sendMessage(env, NEED_REGISTER, { chatId });
-      if (!arg) return sendMessage(env, "Usage: /unfollow <lastfm_username>", { chatId });
+      if (!arg) return sendMessage(env, "Usage: /untrack <lastfm_username>", { chatId });
       await unfollowFriend(env, fromId, arg);
-      await sendMessage(env, `Unfollowed <b>${escHtml(arg)}</b>`, { chatId });
+      await sendMessage(env, `Untracked <b>${escHtml(arg)}</b>`, { chatId });
       return;
     }
-    case "/followed": {
+    case "/tracked": {
       const user = await getUser(env, fromId);
       if (!user) return sendMessage(env, NEED_REGISTER, { chatId });
       const list = await listFollowedFriends(env, fromId);
       await sendMessage(
         env,
-        list.length ? `Following:\n• ${list.map(escHtml).join("\n• ")}` : "Not following anyone yet.",
+        list.length ? `Tracking:\n• ${list.map(escHtml).join("\n• ")}` : "Not tracking anyone yet.",
         { chatId }
       );
       return;
@@ -287,7 +287,7 @@ async function handleCommand(ctx: CommandContext, text: string): Promise<void> {
     default:
       await sendMessage(
         env,
-        "Commands:\n/start\n/lastfm &lt;name&gt;\n/spotify\n/friends\n/follow &lt;name&gt;\n/unfollow &lt;name&gt;\n/followed\n/upcoming [days]\n/ping",
+        "Commands:\n/start\n/lastfm &lt;name&gt;\n/spotify\n/friends\n/track &lt;name&gt;\n/untrack &lt;name&gt;\n/tracked\n/upcoming [days]\n/ping",
         { chatId }
       );
   }
@@ -318,7 +318,7 @@ export async function handleTelegramUpdate(
       if (op === "f") await followFriend(baseCtx.env, fromId, name);
       else await unfollowFriend(baseCtx.env, fromId, name);
       await editFriendsKeyboard(baseCtx.env, fromId, msg.chat.id, msg.message_id, page);
-      return answerCallback(baseCtx.env, cq.id, op === "f" ? "Following" : "Unfollowed");
+      return answerCallback(baseCtx.env, cq.id, op === "f" ? "Tracking" : "Untracked");
     }
     return answerCallback(baseCtx.env, cq.id);
   }
