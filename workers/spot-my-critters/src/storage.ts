@@ -81,6 +81,11 @@ export async function listAllUsers(env: Env): Promise<User[]> {
   return results.map(rowToUser);
 }
 
+// Applied when a user sets a location without ever running /radius. Without this
+// they'd sit at radius_miles = NULL, which the digest treats as "no location" and
+// skips silently.
+export const DEFAULT_RADIUS_MILES = 25;
+
 export async function setUserLocation(
   env: Env,
   tgUserId: number,
@@ -92,9 +97,11 @@ export async function setUserLocation(
   }
 ): Promise<void> {
   await env.DB.prepare(
-    `UPDATE users SET city = ?1, state_code = ?2, latitude = ?3, longitude = ?4 WHERE tg_user_id = ?5`
+    `UPDATE users SET city = ?1, state_code = ?2, latitude = ?3, longitude = ?4,
+       radius_miles = COALESCE(radius_miles, ?5)
+     WHERE tg_user_id = ?6`
   )
-    .bind(loc.city, loc.stateCode, loc.latitude, loc.longitude, tgUserId)
+    .bind(loc.city, loc.stateCode, loc.latitude, loc.longitude, DEFAULT_RADIUS_MILES, tgUserId)
     .run();
 }
 

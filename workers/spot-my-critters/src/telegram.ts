@@ -39,7 +39,25 @@ export async function sendMessage(
     parse_mode: opts.parseMode ?? "HTML",
     disable_web_page_preview: true,
   });
-  if (!res.ok) console.log(`Telegram sendMessage failed: ${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    const body = await res.text();
+    // Throw rather than swallow: a silently dropped send is indistinguishable from
+    // a bot that ignored you, and it let ENTITIES_TOO_LONG go unnoticed for months.
+    throw new Error(`Telegram sendMessage failed: ${res.status} ${body}`);
+  }
+}
+
+/** Send-and-log, for paths that must not throw (e.g. the error notifier itself). */
+export async function trySendMessage(
+  env: Env,
+  text: string,
+  opts: { chatId: string | number; parseMode?: "Markdown" | "HTML" }
+): Promise<void> {
+  try {
+    await sendMessage(env, text, opts);
+  } catch (e) {
+    console.log((e as Error).message);
+  }
 }
 
 function escHtml(s: string): string {
@@ -92,16 +110,24 @@ async function icsLink(env: Env, s: ScoredEvent): Promise<string> {
   return `${new URL(env.SPOTIFY_REDIRECT_URI).origin}/ics?${params.toString()}`;
 }
 
+// Telegram caps a message at 4096 chars, but rejects long digests well before that
+// with ENTITIES_TOO_LONG — the binding limit is the formatting entities, and every
+// event line carries three anchors (event, 📅, 🍎). Cap events per message, not just
+// characters, or a 100-day /upcoming silently fails to send.
+const MAX_MESSAGE_CHARS = 3500;
+const MAX_EVENTS_PER_MESSAGE = 10;
+
 export async function renderDigest(
   env: Env,
   scored: ScoredEvent[],
   opts: { headerLabel: string; tz: string; prices?: Map<string, number> }
-): Promise<string> {
+): Promise<string[]> {
+  const header = `<b>${escHtml(opts.headerLabel)}</b>`;
   if (scored.length === 0) {
-    return `<b>${escHtml(opts.headerLabel)}</b>\nNo matching shows. 🦗`;
+    return [`${header}\nNo matching shows. 🦗`];
   }
   const icsLinks = await Promise.all(scored.map((s) => icsLink(env, s)));
-  const lines: string[] = [`<b>${escHtml(opts.headerLabel)}</b>`];
+  const eventLines: string[] = [];
   for (let i = 0; i < scored.length; i++) {
     const s = scored[i]!;
     const when = formatPT(s.event.dateTimeIso, s.event.localDate, opts.tz);
@@ -110,13 +136,32 @@ export async function renderDigest(
     const priceStr = price !== undefined ? ` · from $${price}` : "";
     const reasons = s.reasons.length ? ` — <i>${escHtml(s.reasons.join(", "))}</i>` : "";
     const cal = ` · <a href="${escHtml(gcalLink(s))}">📅</a><a href="${escHtml(icsLinks[i]!)}">🍎</a>`;
-    lines.push(
+    eventLines.push(
       `• <a href="${escHtml(s.event.url)}">${escHtml(s.matchedName)}</a> @ ${escHtml(
         venue
       )} — ${escHtml(when)}${priceStr}${cal}${reasons}`
     );
   }
-  return lines.join("\n");
+
+  const chunks: string[] = [];
+  let current: string[] = [header];
+  let chars = header.length;
+  let events = 0;
+  for (const line of eventLines) {
+    const tooManyEvents = events >= MAX_EVENTS_PER_MESSAGE;
+    const tooLong = chars + line.length + 1 > MAX_MESSAGE_CHARS;
+    if (events > 0 && (tooManyEvents || tooLong)) {
+      chunks.push(current.join("\n"));
+      current = [];
+      chars = 0;
+      events = 0;
+    }
+    current.push(line);
+    chars += line.length + 1;
+    events++;
+  }
+  if (events > 0) chunks.push(current.join("\n"));
+  return chunks;
 }
 
 // --- Webhook command routing ---

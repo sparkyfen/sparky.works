@@ -3,6 +3,11 @@ main = "src/index.ts"
 compatibility_date = "2025-01-15"
 workers_dev = true
 
+# Workers Logs — needed to diagnose cron runs after the fact.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 # Custom route on sparky.works. Zone must exist in this CF account.
 routes = [
   { pattern = "spot-my-critters.sparky.works", custom_domain = true }

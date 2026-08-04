@@ -7,7 +7,7 @@ import {
   runDigestOnDemand,
 } from "./pipeline";
 import { listAllUsers } from "./storage";
-import { handleTelegramUpdate, sendMessage } from "./telegram";
+import { handleTelegramUpdate, sendMessage, trySendMessage } from "./telegram";
 import { icsPayload, verify } from "./sign";
 
 export default {
@@ -41,7 +41,7 @@ export default {
           const fromChat =
             update.message?.chat.id ?? update.callback_query?.message?.chat.id;
           if (fromChat) {
-            await sendMessage(env, `⚠️ ${(e as Error).message}`, { chatId: fromChat });
+            await trySendMessage(env, `⚠️ ${(e as Error).message}`, { chatId: fromChat });
           }
         })
       );
@@ -177,7 +177,10 @@ async function runWeeklyDigest(env: Env, days: number): Promise<void> {
   // Group by location bucket so users in the same area share one TM fetch.
   const groups = new Map<string, typeof users>();
   for (const user of users) {
-    if (user.latitude == null || user.longitude == null || user.radiusMiles == null) continue;
+    if (user.latitude == null || user.longitude == null || user.radiusMiles == null) {
+      console.log(`digest user=${user.tgUserId}: skipped, incomplete location`);
+      continue;
+    }
     const key = `${user.latitude.toFixed(2)}:${user.longitude.toFixed(2)}:${user.radiusMiles}`;
     const arr = groups.get(key) ?? [];
     arr.push(user);

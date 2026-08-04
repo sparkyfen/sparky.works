@@ -110,12 +110,16 @@ export async function runDigestForUser(
     );
   }
 
-  const msg = await renderDigest(env, filtered, {
+  const messages = await renderDigest(env, filtered, {
     headerLabel: opts.headerLabel,
     tz: env.TIMEZONE,
     prices,
   });
-  await sendMessage(env, msg, { chatId: user.tgUserId });
+  // Sequential, not Promise.all — Telegram orders by arrival, and a parallel burst
+  // both scrambles the digest and risks 429s.
+  for (const msg of messages) {
+    await sendMessage(env, msg, { chatId: user.tgUserId });
+  }
 
   if (opts.writeDedupe && filtered.length > 0) {
     await recordPostedEvents(
