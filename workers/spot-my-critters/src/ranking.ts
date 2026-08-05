@@ -1,4 +1,4 @@
-import type { TMEvent } from "./ticketmaster";
+import type { TMAttraction, TMEvent } from "./ticketmaster";
 
 export const WEIGHTS = {
   spotifyTopShort: 3.0,
@@ -86,28 +86,22 @@ export function buildSignals(input: {
   };
 }
 
-function pickHeadlineAttraction(event: TMEvent): {
-  name: string;
-  spotifyId?: string;
-} | null {
-  const first = event.attractions[0];
-  if (!first) return null;
-  const spId = first.externalLinks?.spotify?.[0]?.id;
-  return { name: first.name, spotifyId: spId };
-}
-
-export function scoreEvent(event: TMEvent, signals: Signals, nowMs: number): ScoredEvent | null {
-  const head = pickHeadlineAttraction(event);
-  if (!head) return null;
-  const norm = normalizeArtist(head.name);
+/**
+ * Score one artist on a bill. Scoring only the first attraction meant an artist
+ * billed as support never matched, so a show you'd want was invisible no matter
+ * how wide the search — every act on the bill gets considered.
+ */
+function scoreAttraction(
+  attraction: TMAttraction,
+  signals: Signals
+): { score: number; reasons: string[] } {
+  const norm = normalizeArtist(attraction.name);
   let score = 0;
   const reasons: string[] = [];
 
-  const spotifyIdMatch = head.spotifyId ? signals.spotifyIds.has(head.spotifyId) : false;
+  const spotifyId = attraction.externalLinks?.spotify?.[0]?.id;
+  const spotifyIdMatch = spotifyId ? signals.spotifyIds.has(spotifyId) : false;
 
-  if (signals.spotifyTopShort.has(norm) || (spotifyIdMatch && signals.spotifyTopShort.size > 0)) {
-    // spotifyIdMatch alone doesn't say which bucket; only use the name check for bucket attribution.
-  }
   if (signals.spotifyTopShort.has(norm)) {
     score += WEIGHTS.spotifyTopShort;
     reasons.push("in your Spotify top (recent)");
@@ -134,6 +128,33 @@ export function scoreEvent(event: TMEvent, signals: Signals, nowMs: number): Sco
     reasons.push(`recently played by ${formatNames(fRecent)}`);
   }
 
+  return { score, reasons };
+}
+
+export function scoreEvent(event: TMEvent, signals: Signals, nowMs: number): ScoredEvent | null {
+  const headliner = event.attractions[0];
+  if (!headliner) return null;
+
+  // Best match wins rather than the sum, so a stacked bill can't out-score a
+  // headliner you actually want. Strict > keeps the headliner on ties.
+  let bestIndex = 0;
+  let best = scoreAttraction(headliner, signals);
+  for (let i = 1; i < event.attractions.length; i++) {
+    const candidate = scoreAttraction(event.attractions[i]!, signals);
+    if (candidate.score > best.score) {
+      best = candidate;
+      bestIndex = i;
+    }
+  }
+
+  let score = best.score;
+  const reasons = [...best.reasons];
+  // Say so when the draw is further down the bill — otherwise the digest names an
+  // artist the event isn't billed under, which reads as a mistake.
+  if (score > 0 && bestIndex > 0) {
+    reasons.push(`supporting ${headliner.name}`);
+  }
+
   // Recency boost: event in next 7 days.
   const eventMs = event.dateTimeIso ? Date.parse(event.dateTimeIso) : Date.parse(event.localDate);
   if (Number.isFinite(eventMs) && eventMs - nowMs <= 7 * 24 * 3600 * 1000) {
@@ -141,7 +162,7 @@ export function scoreEvent(event: TMEvent, signals: Signals, nowMs: number): Sco
   }
 
   if (score <= 0) return null;
-  return { event, score, reasons, matchedName: head.name };
+  return { event, score, reasons, matchedName: event.attractions[bestIndex]!.name };
 }
 
 export function rankEvents(
