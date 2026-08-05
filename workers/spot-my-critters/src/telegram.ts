@@ -120,11 +120,23 @@ const MAX_EVENTS_PER_MESSAGE = 10;
 export async function renderDigest(
   env: Env,
   scored: ScoredEvent[],
-  opts: { headerLabel: string; tz: string; prices?: Map<string, number> }
+  opts: {
+    headerLabel: string;
+    tz: string;
+    prices?: Map<string, number>;
+    degraded?: string[];
+  }
 ): Promise<string[]> {
   const header = `<b>${escHtml(opts.headerLabel)}</b>`;
+  // A degraded signal source lowers scores and drops events. Say so, rather than
+  // quietly returning a shorter list that looks like a complete one.
+  const warning = opts.degraded?.length
+    ? `\n⚠️ <i>Some results may be missing — signals unavailable: ${escHtml(
+        opts.degraded.join(", ")
+      )}</i>`
+    : "";
   if (scored.length === 0) {
-    return [`${header}\nNo matching shows. 🦗`];
+    return [`${header}\nNo matching shows. 🦗${warning}`];
   }
   const icsLinks = await Promise.all(scored.map((s) => icsLink(env, s)));
   const eventLines: string[] = [];
@@ -144,8 +156,8 @@ export async function renderDigest(
   }
 
   const chunks: string[] = [];
-  let current: string[] = [header];
-  let chars = header.length;
+  let current: string[] = [header + warning];
+  let chars = header.length + warning.length;
   let events = 0;
   for (const line of eventLines) {
     const tooManyEvents = events >= MAX_EVENTS_PER_MESSAGE;

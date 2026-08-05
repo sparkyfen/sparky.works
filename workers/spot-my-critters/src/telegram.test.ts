@@ -70,6 +70,36 @@ describe("renderDigest chunking", () => {
     for (const m of msgs) expect(m.trim()).not.toBe("");
   });
 
+  it("warns when a signal source degraded, naming it", async () => {
+    const msgs = await renderDigest(env, scored(3), {
+      headerLabel: "Shows",
+      tz: "UTC",
+      degraded: ["spotify:top:short", "lastfm:mine"],
+    });
+    // A degraded source silently lowers scores and drops events — the user has to
+    // be able to tell a short list from a complete one.
+    expect(msgs[0]).toContain("may be missing");
+    expect(msgs[0]).toContain("spotify:top:short");
+    expect(msgs[0]).toContain("lastfm:mine");
+  });
+
+  it("warns on an empty digest too, so 'no shows' isn't mistaken for complete", async () => {
+    const msgs = await renderDigest(env, [], {
+      headerLabel: "Shows",
+      tz: "UTC",
+      degraded: ["lastfm:mine"],
+    });
+    expect(msgs[0]).toContain("No matching shows");
+    expect(msgs[0]).toContain("lastfm:mine");
+  });
+
+  it("stays clean when nothing degraded", async () => {
+    const msgs = await renderDigest(env, scored(3), { headerLabel: "Shows", tz: "UTC" });
+    expect(msgs[0]).not.toContain("may be missing");
+    const empty = await renderDigest(env, [], { headerLabel: "Shows", tz: "UTC" });
+    expect(empty[0]).not.toContain("may be missing");
+  });
+
   it("puts the header on the first chunk only", async () => {
     const msgs = await renderDigest(env, scored(60), { headerLabel: "Shows", tz: "UTC" });
     expect(msgs[0]!.startsWith("<b>Shows</b>")).toBe(true);

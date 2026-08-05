@@ -29,27 +29,39 @@ export interface DigestOptions {
   withPrices: boolean;
 }
 
-async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+/**
+ * A failed signal source silently becomes empty, which drops an artist's score and
+ * makes events vanish for no visible reason. Record which source degraded so the
+ * loss is attributable rather than mysterious.
+ */
+async function safe<T>(
+  source: string,
+  fn: () => Promise<T>,
+  fallback: T,
+  degraded: Set<string>
+): Promise<T> {
   try {
     return await fn();
   } catch (err) {
-    console.log(`pipeline step failed: ${(err as Error).message}`);
+    degraded.add(source);
+    console.log(`signal source degraded: ${source}: ${(err as Error).message}`);
     return fallback;
   }
 }
 
 async function gatherSignalsForUser(env: Env, user: User) {
+  const degraded = new Set<string>();
   const hasSpotify = !!(await getSpotifyRefreshToken(env, user.tgUserId));
   const [topShort, topMedium, followed] = hasSpotify
     ? await Promise.all([
-        safe(() => getTopArtists(env, user.tgUserId, "short_term", 50), [] as Artist[]),
-        safe(() => getTopArtists(env, user.tgUserId, "medium_term", 50), [] as Artist[]),
-        safe(() => getFollowedArtists(env, user.tgUserId), [] as Artist[]),
+        safe("spotify:top:short", () => getTopArtists(env, user.tgUserId, "short_term", 50), [] as Artist[], degraded),
+        safe("spotify:top:medium", () => getTopArtists(env, user.tgUserId, "medium_term", 50), [] as Artist[], degraded),
+        safe("spotify:followed", () => getFollowedArtists(env, user.tgUserId), [] as Artist[], degraded),
       ])
     : [[] as Artist[], [] as Artist[], [] as Artist[]];
 
   const lastfmMine = user.lastfmUsername
-    ? await safe(() => getUserTopArtists(env, user.lastfmUsername!, 50), [] as string[])
+    ? await safe("lastfm:mine", () => getUserTopArtists(env, user.lastfmUsername!, 50), [] as string[], degraded)
     : [];
 
   const friends = await listTrackedLastfmUsers(env, user.tgUserId);
@@ -59,12 +71,12 @@ async function gatherSignalsForUser(env: Env, user: User) {
 
   await Promise.all(
     friends.map(async (u) => {
-      friendTopByUser[u] = await safe(() => getUserTopArtists(env, u, 50, "3month"), []);
-      friendRecentByUser[u] = await safe(() => getRecentArtistsSince(env, u, since, 200), []);
+      friendTopByUser[u] = await safe(`lastfm:top:${u}`, () => getUserTopArtists(env, u, 50, "3month"), [], degraded);
+      friendRecentByUser[u] = await safe(`lastfm:recent:${u}`, () => getRecentArtistsSince(env, u, since, 200), [], degraded);
     })
   );
 
-  return buildSignals({
+  const signals = buildSignals({
     spotifyTopShort: topShort,
     spotifyTopMedium: topMedium,
     spotifyFollowed: followed,
@@ -72,6 +84,10 @@ async function gatherSignalsForUser(env: Env, user: User) {
     friendTopByUser,
     friendRecentByUser,
   });
+  if (degraded.size > 0) {
+    console.log(`user=${user.tgUserId} signals degraded: ${[...degraded].join(", ")}`);
+  }
+  return { signals, degraded: [...degraded] };
 }
 
 export interface PerUserContext {
@@ -87,8 +103,11 @@ export async function runDigestForUser(
 ): Promise<ScoredEvent[]> {
   const threshold = parseFloat(env.SCORE_THRESHOLD) || 2.0;
   const now = new Date();
-  const signals = await gatherSignalsForUser(env, user);
+  const { signals, degraded } = await gatherSignalsForUser(env, user);
   const scored = rankEvents(events, signals, threshold, now.getTime());
+  console.log(
+    `user=${user.tgUserId}: ${events.length} events in, ${scored.length} above threshold ${threshold}`
+  );
 
   const filtered: ScoredEvent[] = [];
   for (const s of scored) {
@@ -98,12 +117,15 @@ export async function runDigestForUser(
 
   const prices = new Map<string, number>();
   if (opts.withPrices && env.SEATGEEK_CLIENT_ID) {
+    const priceDegraded = new Set<string>();
     await Promise.all(
       filtered.map(async (s) => {
         if (!s.event.venueName) return;
         const p = await safe(
+          "seatgeek:price",
           () => lookupLowestPrice(env, s.matchedName, s.event.venueName!),
-          undefined as number | undefined
+          undefined as number | undefined,
+          priceDegraded
         );
         if (p !== undefined) prices.set(s.event.id, p);
       })
@@ -114,6 +136,7 @@ export async function runDigestForUser(
     headerLabel: opts.headerLabel,
     tz: env.TIMEZONE,
     prices,
+    degraded,
   });
   // Sequential, not Promise.all — Telegram orders by arrival, and a parallel burst
   // both scrambles the digest and risks 429s.
