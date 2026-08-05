@@ -10,6 +10,10 @@ Living list. Roughly grouped by effort/impact. Order within a group is rough pri
 - ✅ **Per-user city / location** — `/city`, `/radius`, and shared-location messages all work. Cron groups users by location bucket so neighbors share one TM fetch.
 - ✅ **Calendar links** — 📅 (Google Calendar quick-add) and 🍎 (Apple Calendar `.ics`) per event. Apple links are HMAC-signed to prevent forgery.
 - ✅ **Multi-tenant** — each Telegram user has their own Spotify, Last.fm username, tracked friends, dedupe state.
+- ✅ **Support acts count** — every artist on a bill is scored, best match wins. Previously only `attractions[0]` was scored, so a support slot was invisible at any radius.
+- ✅ **Full date coverage** — dense Ticketmaster windows are split by date instead of hitting the ~1000-item deep-paging ceiling. Widening the radius used to *shrink* the date range covered.
+- ✅ **Digests that actually send** — long digests are chunked. Telegram rejects link-heavy messages with `ENTITIES_TOO_LONG` before the character limit, and the failure used to be swallowed silently.
+- ✅ **Failures are visible** — `sendMessage` throws instead of logging, degraded signal sources are named in the logs and in the digest itself, and Workers Logs is on.
 
 ---
 
@@ -19,6 +23,11 @@ Living list. Roughly grouped by effort/impact. Order within a group is rough pri
 **Why**: bot is currently open — anyone who finds it can register and get personalized digests, which costs subrequests.
 **Sketch**: env var `ALLOWED_TG_USER_IDS = "728854954,…"`. `/start` rejects with "ask the owner for access" if not on the list.
 **Effort**: tiny.
+
+### Cache Spotify calls
+**Why**: Last.fm responses are cached (6h top, 30m recent) but Spotify's aren't — every run re-hits `/me/top/artists` and `/me/following`, which rate-limits aggressively. A 429 makes `safe()` degrade that signal to empty, dropping up to 3.0 from an artist's score and silently removing events. It's a live source of run-to-run variance; it just hasn't bitten during any observed run.
+**Sketch**: wrap the three calls in `cached()` like `lastfm.ts` does. Key by tg user id; short TTL (~1h) since top-artist buckets move slowly. Note the token refresh must stay uncached.
+**Effort**: small.
 
 ### SeatGeek price lookup
 **Why**: the integration is already wired (`pipeline.ts` + `seatgeek.ts`); just need the API key.

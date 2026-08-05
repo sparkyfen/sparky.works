@@ -101,7 +101,7 @@ All commands except `/ping` are DM-only.
 - `GET /oauth/spotify/start?u=<tg_user_id>` — kicks off Spotify OAuth for that user
 - `GET /oauth/spotify/callback` — exchange code, store refresh token in KV
 - `GET /ics?n=&s=&id=&loc=&u=&sig=` — HMAC-signed Apple Calendar download
-- `GET /debug/digest?u=<tg_user_id>&days=<n>&key=<DEBUG_KEY>` — dry-run digest as JSON
+- `GET /debug/digest?u=<tg_user_id>&days=<n>&key=<DEBUG_KEY>` — returns the digest as JSON. **Not a dry run** — it also DMs the user, and only the dedupe write is suppressed.
 
 ## Dev / test
 
@@ -111,12 +111,47 @@ npm test
 npm run dev
 # Force cron locally:
 curl "http://localhost:8787/__scheduled?cron=0+17+*+*+1"
-# Dry-run digest for a specific user:
+# Digest for a specific user — NOTE: this really DMs them:
 curl "http://localhost:8787/debug/digest?u=<tg_user_id>&days=7&key=<DEBUG_KEY>"
 ```
 
+Forcing the cron exercises the handler, not Cloudflare's scheduler — it can't tell
+you whether the weekly trigger actually fires. Against `--remote` it also DMs every
+registered user and writes `posted_events`, whose dedupe then suppresses the next
+real run.
+
+## Observability
+
+Workers Logs is enabled in `wrangler.toml`. For live output:
+
+```bash
+CLOUDFLARE_ACCOUNT_ID=<account> npx wrangler tail --format pretty
+```
+
+`wrangler tail` streams regardless of the `[observability]` setting, so a working
+tail says nothing about log retention — check the dashboard Logs tab for that. Tail
+can't capture retroactively either; start it before triggering anything.
+
+Lines worth knowing:
+
+- `tm: splitting <range> (N events, depth D)` — window too dense, being halved
+- `tm: N events (M dupes) in R requests` — coverage and request cost per fetch
+- `tm: TRUNCATED <range>` — coverage is incomplete; results are missing
+- `user=<id>: N events in, M above threshold` — separates "never fetched" from
+  "fetched but scored too low"
+- `signal source degraded: <source>` — a Spotify/Last.fm call failed, so scores are
+  suppressed and events may be missing. The digest carries a matching warning.
+
 ## Tuning
 
-- Scoring weights: `src/ranking.ts` `WEIGHTS`
+- Scoring weights: `src/ranking.ts` `WEIGHTS`. Every artist on a bill is scored and
+  the best match wins, so support acts surface too.
 - Score threshold, default digest window, etc: `wrangler.toml` `[vars]`
 - Cache TTLs: `src/cache.ts` callers in `lastfm.ts` and `ticketmaster.ts`
+- Ticketmaster paging: `src/ticketmaster.ts`. TM refuses deep paging past ~1000
+  items, so a dense window is split by date rather than truncated. `MAX_REQUESTS`
+  bounds the total fetch cost.
+- Telegram message size: `src/telegram.ts` `MAX_EVENTS_PER_MESSAGE` /
+  `MAX_MESSAGE_CHARS`. Telegram rejects link-heavy digests with
+  `ENTITIES_TOO_LONG` well before the 4096-character limit, so the cap that
+  matters is the event count, not the character count.
