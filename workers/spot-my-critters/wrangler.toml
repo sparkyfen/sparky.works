@@ -3,10 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2025-01-15"
 workers_dev = true
 
-# Custom route on sparky.works. Zone must exist in this CF account.
-routes = [
-  { pattern = "spot-my-critters.sparky.works", custom_domain = true }
-]
+# Custom domain removed 2026-09-17: sparky.works is on registrar clientHold and its
+# Cloudflare zone no longer exists, so this route fails to validate. Serving on
+# workers.dev until the domain is restored.
 
 # Workers Logs — needed to diagnose cron runs after the fact.
 # Keep table headers below every top-level key: in TOML a [table] swallows all
@@ -26,7 +25,7 @@ SCORE_THRESHOLD = "2.0"
 DIGEST_DAYS = "7"
 UPCOMING_MAX_DAYS = "100"
 # OAuth callback (must match what's set in the Spotify app dashboard).
-SPOTIFY_REDIRECT_URI = "https://spot-my-critters.sparky.works/oauth/spotify/callback"
+SPOTIFY_REDIRECT_URI = "https://spot-my-critters.sparkyfen.workers.dev/oauth/spotify/callback"
 # Secret used to gate /debug/digest. Override via `wrangler secret put DEBUG_KEY` if you prefer.
 
 # Bindings — fill in IDs after `wrangler d1 create` and `wrangler kv:namespace create`.
