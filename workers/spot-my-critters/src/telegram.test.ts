@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderDigest } from "./telegram";
+import { renderDigest, USAGE_TRACK, USAGE_UNTRACK } from "./telegram";
 import type { Env } from "./env";
 import type { ScoredEvent } from "./ranking";
 
@@ -104,5 +104,38 @@ describe("renderDigest chunking", () => {
     const msgs = await renderDigest(env, scored(60), { headerLabel: "Shows", tz: "UTC" });
     expect(msgs[0]!.startsWith("<b>Shows</b>")).toBe(true);
     expect(msgs.slice(1).filter((m) => m.includes("<b>Shows</b>"))).toHaveLength(0);
+  });
+});
+
+// Telegram's HTML parse mode accepts only this tag set and rejects the entire
+// message on anything else, so an unescaped placeholder like <lastfm_username>
+// makes the reply vanish with only a 400 in the logs.
+const TELEGRAM_HTML_TAGS = new Set([
+  "b", "strong", "i", "em", "u", "ins", "s", "strike", "del",
+  "span", "tg-spoiler", "a", "code", "pre", "blockquote",
+]);
+
+const unsupportedTags = (text: string): string[] =>
+  [...text.matchAll(/<\/?([A-Za-z][A-Za-z0-9_-]*)/g)]
+    .map((m) => m[1]!.toLowerCase())
+    .filter((tag) => !TELEGRAM_HTML_TAGS.has(tag));
+
+describe("usage messages survive parse_mode HTML", () => {
+  it.each([
+    ["/track", USAGE_TRACK],
+    ["/untrack", USAGE_UNTRACK],
+  ])("%s usage text contains no unsupported tag", (_cmd, text) => {
+    expect(unsupportedTags(text)).toEqual([]);
+  });
+
+  it.each([
+    ["/track", USAGE_TRACK],
+    ["/untrack", USAGE_UNTRACK],
+  ])("%s usage text escapes the placeholder angle brackets", (_cmd, text) => {
+    expect(text).toContain("&lt;lastfm_username&gt;");
+  });
+
+  it("would have caught the original unescaped string", () => {
+    expect(unsupportedTags("Usage: /untrack <lastfm_username>")).toEqual(["lastfm_username"]);
   });
 });

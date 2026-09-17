@@ -263,6 +263,11 @@ async function renderFriendsKeyboard(
 
 const DM_ONLY_HELP = "DM the bot to use this command.";
 const NEED_REGISTER = "Send /start in a DM to register first.";
+// Entity-escaped and exported so a test can hold them to Telegram's HTML rules:
+// parse_mode HTML rejects the whole message on an unknown tag, so a bare
+// <lastfm_username> silently dropped these replies instead of sending them.
+export const USAGE_TRACK = "Usage: <code>/track &lt;lastfm_username&gt;</code>";
+export const USAGE_UNTRACK = "Usage: <code>/untrack &lt;lastfm_username&gt;</code>";
 
 async function handleCommand(ctx: CommandContext, text: string): Promise<void> {
   const { env, chatId, chatType, fromId } = ctx;
@@ -351,7 +356,7 @@ async function handleCommand(ctx: CommandContext, text: string): Promise<void> {
     case "/track": {
       const user = await getUser(env, fromId);
       if (!user) return sendMessage(env, NEED_REGISTER, { chatId });
-      if (!arg) return sendMessage(env, "Usage: /track <lastfm_username>", { chatId });
+      if (!arg) return sendMessage(env, USAGE_TRACK, { chatId });
       await trackLastfmUser(env, fromId, arg);
       await sendMessage(env, `Now tracking <b>${escHtml(arg)}</b>`, { chatId });
       return;
@@ -359,7 +364,7 @@ async function handleCommand(ctx: CommandContext, text: string): Promise<void> {
     case "/untrack": {
       const user = await getUser(env, fromId);
       if (!user) return sendMessage(env, NEED_REGISTER, { chatId });
-      if (!arg) return sendMessage(env, "Usage: /untrack <lastfm_username>", { chatId });
+      if (!arg) return sendMessage(env, USAGE_UNTRACK, { chatId });
       await untrackLastfmUser(env, fromId, arg);
       await sendMessage(env, `Untracked <b>${escHtml(arg)}</b>`, { chatId });
       return;
